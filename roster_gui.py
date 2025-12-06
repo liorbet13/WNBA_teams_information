@@ -655,7 +655,7 @@ class RosterViewerGUI:
                 stats_frame.grid(row=0, column=1, sticky='nsew', padx=5)
                 
                 # Scoring stats
-                scoring_label = tk.Label(stats_frame, text="Season Averages (2024)", 
+                scoring_label = tk.Label(stats_frame, text="Season Averages (2025)", 
                                         font=('Arial', 9, 'bold', 'italic'),
                                         bg='white', fg='#006BB6')
                 scoring_label.grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 5))
