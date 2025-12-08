@@ -26,14 +26,6 @@ The following enhancements are planned for future releases:
 - **Bulk Fetch**: "Fetch All Details" button to load all player information at once
 - **Save Rosters**: Export team rosters to JSON files for offline viewing
 
-## Screenshots
-
-The app displays players in a clean grid layout with:
-- Player number and name
-- Position
-- Basic statistics (PPG, RPG, APG)
-- Player headshot photo
-- Click-to-expand details panel
 
 ## Requirements
 
