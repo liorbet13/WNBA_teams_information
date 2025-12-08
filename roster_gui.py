@@ -25,7 +25,8 @@ class RosterViewerGUI:
         """
         self.root = root
         self.root.title("WNBA Team Roster Viewer")
-        self.root.geometry("900x700")
+        self.root.geometry("1000x750")
+        self.root.minsize(950, 700)  # Prevent window from being too small
         
         # WNBA website colors (updated to match official site)
         self.wnba_black = "#000000"          # Main background
@@ -248,17 +249,78 @@ class RosterViewerGUI:
         
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
+        status_frame = tk.Frame(self.root, bg=self.wnba_black)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        
         status_bar = tk.Label(
-            self.root,
+            status_frame,
             textvariable=self.status_var,
             bg=self.wnba_black,
             fg=self.wnba_white,
             font=("Arial", 9),
             anchor=tk.W,
             padx=10,
-            pady=5
+            pady=8
         )
-        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        status_bar.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Create a custom progress bar using Canvas for better visibility
+        progress_container = tk.Frame(status_frame, bg=self.wnba_black)
+        progress_container.pack(side=tk.RIGHT, padx=15, pady=5)
+        
+        # Label for progress percentage
+        self.progress_label = tk.Label(
+            progress_container,
+            text="0%",
+            bg=self.wnba_black,
+            fg=self.wnba_white,
+            font=("Arial", 9, "bold"),
+            width=5
+        )
+        self.progress_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # Canvas-based progress bar
+        self.progress_canvas = tk.Canvas(
+            progress_container,
+            width=200,
+            height=20,
+            bg=self.wnba_dark_gray,
+            highlightthickness=1,
+            highlightbackground=self.wnba_white
+        )
+        self.progress_canvas.pack(side=tk.RIGHT)
+        
+        # Create the progress rectangle (initially at 0%)
+        self.progress_rect = self.progress_canvas.create_rectangle(
+            0, 0, 0, 20,
+            fill=self.wnba_orange,
+            outline=""
+        )
+        
+        self.progress_var = tk.DoubleVar()
+        self.progress_visible = True
+    
+    def show_progress(self):
+        """Reset and show the progress bar"""
+        self.progress_var.set(0)
+        self.update_progress(0)
+        self.root.update()
+    
+    def hide_progress(self):
+        """Reset the progress bar to 0"""
+        self.progress_var.set(0)
+        self.update_progress(0)
+        self.root.update()
+    
+    def update_progress(self, value):
+        """Update the visual progress bar"""
+        # Update the canvas rectangle width based on percentage
+        width = int((value / 100) * 200)  # 200 is the canvas width
+        self.progress_canvas.coords(self.progress_rect, 0, 0, width, 20)
+        
+        # Update the percentage label
+        self.progress_label.config(text=f"{int(value)}%")
+        self.root.update()
     
     def _on_mousewheel(self, event):
         """Handle mouse wheel scrolling"""
@@ -309,31 +371,49 @@ class RosterViewerGUI:
             messagebox.showwarning("No Team Selected", "Please select a team first.")
             return
         
+        # Show progress bar
+        self.show_progress()
         self.status_var.set(f"Fetching roster for {team_name}...")
         self.root.update()
         
-        try:
-            # Fetch the roster (without detailed player info)
-            roster_data = self.fetcher.fetch_team_roster(team_name)
-            
-            # Save the roster
-            filepath = self.fetcher.save_roster(roster_data)
-            
-            # Store and display the roster
-            self.current_roster_data = roster_data
-            self.display_roster(roster_data)
-            
-            self.status_var.set(f"Roster loaded! Click players for details.")
-            self.update_saved_teams_label()
-            
-            messagebox.showinfo(
-                "Success",
-                f"Roster for {team_name} loaded!\nClick on any player to see their details."
-            )
-            
-        except Exception as e:
-            self.status_var.set("Error occurred")
-            messagebox.showerror("Error", f"Failed to fetch roster:\n{str(e)}")
+        def fetch_in_background():
+            try:
+                # Update progress
+                self.root.after(0, lambda: self.update_progress(20))
+                
+                # Fetch the roster (without detailed player info)
+                roster_data = self.fetcher.fetch_team_roster(team_name)
+                
+                self.root.after(0, lambda: self.update_progress(60))
+                
+                # Save the roster
+                filepath = self.fetcher.save_roster(roster_data)
+                
+                self.root.after(0, lambda: self.update_progress(80))
+                
+                # Store and display the roster
+                self.current_roster_data = roster_data
+                self.root.after(0, lambda: self.display_roster(roster_data))
+                
+                self.root.after(0, lambda: self.update_progress(100))
+                self.root.after(0, lambda: self.status_var.set(f"Roster loaded! Click players for details."))
+                self.root.after(0, self.update_saved_teams_label)
+                
+                # Keep progress bar at 100% for at least 1.5 seconds before resetting
+                self.root.after(1500, self.hide_progress)
+                
+                self.root.after(0, lambda: messagebox.showinfo(
+                    "Success",
+                    f"Roster for {team_name} loaded!\nClick on any player to see their details."
+                ))
+                
+            except Exception as e:
+                self.root.after(0, lambda: self.status_var.set("Error occurred"))
+                self.root.after(0, self.hide_progress)
+                self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to fetch roster:\n{str(e)}"))
+        
+        # Run in background thread
+        threading.Thread(target=fetch_in_background, daemon=True).start()
     
     def load_roster(self):
         """Load saved roster data from file"""
@@ -567,14 +647,20 @@ class RosterViewerGUI:
         
         # Fetch details if not already fetched
         if not player.get('details_fetched', False):
+            # Show progress bar
+            self.show_progress()
             self.status_var.set(f"Fetching details for {player_name}...")
             self.root.update()
             
             # Fetch in background thread
             def fetch_and_display():
+                self.root.after(0, lambda: self.update_progress(30))
+                
                 details = self.fetcher.fetch_single_player_details(player_id)
                 player.update(details)
                 player['details_fetched'] = True
+                
+                self.root.after(0, lambda: self.update_progress(70))
                 
                 # Update the saved roster data
                 if self.current_roster_data:
@@ -586,9 +672,14 @@ class RosterViewerGUI:
                     # Save updated roster
                     self.fetcher.save_roster(self.current_roster_data)
                 
+                self.root.after(0, lambda: self.update_progress(100))
+                
                 # Update display on main thread
                 self.root.after(0, lambda: self._show_expanded_details(player))
                 self.root.after(0, lambda: self.status_var.set(f"Loaded details for {player_name}"))
+                
+                # Keep progress bar at 100% for at least 1.5 seconds before resetting
+                self.root.after(1500, self.hide_progress)
             
             threading.Thread(target=fetch_and_display, daemon=True).start()
         else:
@@ -727,24 +818,55 @@ class RosterViewerGUI:
             messagebox.showinfo("All Details Loaded", "All player details are already loaded!")
             return
         
+        # Show progress bar
+        self.show_progress()
         self.status_var.set(f"Fetching details for {len(to_fetch)} players...")
         self.root.update()
         
-        # Use the parallel fetcher
-        self.fetcher._fetch_player_details_parallel(to_fetch)
+        def fetch_in_background():
+            total = len(to_fetch)
+            
+            # Update progress as we fetch
+            def update_progress_func(completed):
+                progress = (completed / total) * 100
+                self.root.after(0, lambda p=progress: self.update_progress(p))
+                self.root.after(0, lambda c=completed, t=total: 
+                              self.status_var.set(f"Fetching details... {c}/{t} players"))
+            
+            # Fetch with progress updates
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = {executor.submit(self.fetcher._fetch_player_details, player): player 
+                          for player in to_fetch}
+                
+                completed = 0
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                        completed += 1
+                        update_progress_func(completed)
+                    except Exception as e:
+                        print(f"Error fetching player details: {e}")
+            
+            # Mark as fetched
+            for player in to_fetch:
+                player['details_fetched'] = True
+            
+            # Save updated roster
+            self.fetcher.save_roster(self.current_roster_data)
+            
+            # Refresh display
+            self.root.after(0, lambda: self.display_roster(self.current_roster_data))
+            self.root.after(0, lambda: self.update_progress(100))
+            self.root.after(0, lambda t=total: self.status_var.set(f"Loaded details for all {t} players!"))
+            
+            # Keep progress bar at 100% for at least 1.5 seconds before resetting
+            self.root.after(1500, self.hide_progress)
+            
+            self.root.after(0, lambda t=total: messagebox.showinfo("Success", f"Fetched details for {t} players!"))
         
-        # Mark as fetched
-        for player in to_fetch:
-            player['details_fetched'] = True
-        
-        # Save updated roster
-        self.fetcher.save_roster(self.current_roster_data)
-        
-        # Refresh display
-        self.display_roster(self.current_roster_data)
-        
-        self.status_var.set(f"Loaded details for all {len(to_fetch)} players!")
-        messagebox.showinfo("Success", f"Fetched details for {len(to_fetch)} players!")
+        # Run in background thread
+        threading.Thread(target=fetch_in_background, daemon=True).start()
     
     def update_saved_teams_label(self):
         """Update the label showing how many teams have saved data"""
