@@ -42,14 +42,6 @@ The following enhancements are planned for future releases:
 - Image caching for faster repeat visits
 - Enhanced data visualization
 
-## Screenshots
-
-The app displays players in a clean, organized layout with:
-- Player number, name, and position
-- Key statistics (PPG, RPG, APG)
-- Player headshot photo
-- Click-to-expand details panel
-- Comprehensive stats breakdown
 
 ## Requirements
 
