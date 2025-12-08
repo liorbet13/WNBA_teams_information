@@ -6,16 +6,17 @@ Run with: streamlit run roster_webapp.py
 
 import streamlit as st
 from roster_fetcher import WNBARosterFetcher
+from stats_guide import STATS_GUIDE, STATS_TIP, STAT_DEFINITIONS
 import requests
 from PIL import Image
 from io import BytesIO
 import time
+import json
 
 
 # Page configuration
 st.set_page_config(
     page_title="WNBA Team Roster Viewer",
-    page_icon="🏀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -90,6 +91,11 @@ def load_image_from_url(url, size=(100, 100)):
     return None
 
 
+def get_stat_help(stat_key):
+    """Get the definition/help text for a stat"""
+    return STAT_DEFINITIONS.get(stat_key.lower(), '')
+
+
 def display_player_row(player, index):
     """Display a simple player row - fast and lightweight"""
     # Create a clickable row
@@ -139,8 +145,20 @@ def display_player_details(player):
     
     # Fetch details if not already fetched
     if not player.get('details_fetched', False):
-        with st.spinner('Loading player details...'):
-            details = st.session_state.fetcher.fetch_single_player_details(player.get('id', ''))
+        with st.spinner('Loading comprehensive player stats...'):
+            # Get team name and fetch API stats
+            team_name = st.session_state.current_roster.get('team_name', '')
+            
+            # Fetch API stats for the team
+            api_stats_dict = st.session_state.fetcher.fetch_team_stats_from_api(team_name)
+            api_stats = api_stats_dict.get(player.get('name', ''), None)
+            
+            # Fetch player details with API stats
+            details = st.session_state.fetcher.fetch_single_player_details(
+                player.get('id', ''),
+                player.get('name', ''),
+                api_stats
+            )
             player.update(details)
             player['details_fetched'] = True
             
@@ -151,8 +169,6 @@ def display_player_details(player):
                         p.update(details)
                         p['details_fetched'] = True
                         break
-                # Save updated roster
-                st.session_state.fetcher.save_roster(st.session_state.current_roster)
     
     # Two-column layout
     col_left, col_right = st.columns([1, 2])
@@ -165,12 +181,12 @@ def display_player_details(player):
             if img:
                 st.image(img, width=200)
             else:
-                st.markdown("### 📷")
+                st.markdown("### [No Photo]")
         else:
-            st.markdown("### 📷")
+            st.markdown("### [No Photo]")
         
         # Bio Information
-        st.markdown("### 📋 Bio Information")
+        st.markdown("### Bio Information")
         bio_data = [
             ('Height', player.get('height', '--')),
             ('Weight', player.get('weight', '--')),
@@ -185,40 +201,135 @@ def display_player_details(player):
     
     with col_right:
         # Season Statistics
-        st.markdown("### 📈 Season Statistics (2025)")
+        st.markdown("### Season Statistics (2025)")
         
-        # Main stats
+        # Main stats with tooltips
         metric_col1, metric_col2, metric_col3 = st.columns(3)
         with metric_col1:
-            st.metric("PPG", player.get('ppg', '--'))
+            st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
         with metric_col2:
-            st.metric("RPG", player.get('rpg', '--'))
+            st.metric("RPG", player.get('rpg', '--'), help=get_stat_help('rpg'))
         with metric_col3:
-            st.metric("APG", player.get('apg', '--'))
+            st.metric("APG", player.get('apg', '--'), help=get_stat_help('apg'))
         
-        st.markdown("### 🎯 Shooting Percentages")
+        st.markdown("### Shooting Percentages")
         
-        # Shooting percentages
+        # Shooting percentages with tooltips
         shoot_col1, shoot_col2, shoot_col3 = st.columns(3)
         with shoot_col1:
-            st.metric("FG%", player.get('fgp', '--'))
+            st.metric("FG%", player.get('fgp', '--'), help=get_stat_help('fgp'))
         with shoot_col2:
-            st.metric("3P%", player.get('3pp', '--'))
+            st.metric("3P%", player.get('3pp', '--'), help=get_stat_help('3pp'))
         with shoot_col3:
-            st.metric("FT%", player.get('ftp', '--'))
+            st.metric("FT%", player.get('ftp', '--'), help=get_stat_help('ftp'))
         
-        st.markdown("### 📊 Other Stats")
+        st.markdown("### Other Stats")
         
-        # Other stats
+        # Other stats with tooltips
         other_col1, other_col2, other_col3, other_col4 = st.columns(4)
         with other_col1:
-            st.metric("SPG", player.get('spg', '--'))
+            st.metric("SPG", player.get('spg', '--'), help=get_stat_help('spg'))
         with other_col2:
-            st.metric("BPG", player.get('bpg', '--'))
+            st.metric("BPG", player.get('bpg', '--'), help=get_stat_help('bpg'))
         with other_col3:
-            st.metric("TPG", player.get('tpg', '--'))
+            st.metric("TPG", player.get('tpg', '--'), help=get_stat_help('tpg'))
         with other_col4:
-            st.metric("MPG", player.get('mpg', '--'))
+            st.metric("MPG", player.get('mpg', '--'), help=get_stat_help('mpg'))
+        
+        # Advanced stats preview with tooltips
+        st.markdown("### Advanced Stats")
+        adv_col1, adv_col2, adv_col3 = st.columns(3)
+        with adv_col1:
+            st.metric("Games", player.get('gp', '--'), help=get_stat_help('gp'))
+        with adv_col2:
+            st.metric("+/-", player.get('plus_minus', '--'), help=get_stat_help('plus_minus'))
+        with adv_col3:
+            st.metric("Fantasy Pts", player.get('fantasy_pts', '--'), help=get_stat_help('fantasy_pts'))
+    
+    # Full comprehensive stats (expandable)
+    with st.expander("Show All Stats", expanded=False):
+        st.markdown("### Complete Statistical Breakdown")
+        
+        # Exclude non-stat fields and ranking stats
+        exclude_fields = {'id', 'name', 'number', 'position', 'image_url', 'details_fetched'}
+        
+        # Get all stats (including what's shown above)
+        all_stats = {}
+        for key, value in player.items():
+            if key not in exclude_fields and not key.endswith('_RANK') and value:
+                all_stats[key] = value
+        
+        if all_stats:
+            # Bio Information
+            st.markdown("#### Bio Information")
+            bio_cols = st.columns(3)
+            bio_stats = ['height', 'weight', 'college', 'experience', 'birth_date', 'birth_place']
+            bio_labels = {'height': 'Height', 'weight': 'Weight', 'college': 'College',
+                         'experience': 'Experience', 'birth_date': 'Birth Date', 'birth_place': 'Birth Place'}
+            for idx, stat in enumerate(bio_stats):
+                if stat in all_stats:
+                    with bio_cols[idx % 3]:
+                        st.metric(bio_labels[stat], all_stats[stat])
+            
+            # Game Statistics
+            st.markdown("#### Game Statistics")
+            game_cols = st.columns(4)
+            game_stats_keys = ['gp', 'w', 'l', 'w_pct', 'mpg']
+            game_labels = {'gp': 'Games Played', 'w': 'Wins', 'l': 'Losses', 
+                          'w_pct': 'Win %', 'mpg': 'Minutes Per Game'}
+            for idx, stat in enumerate(game_stats_keys):
+                if stat in all_stats:
+                    with game_cols[idx % 4]:
+                        st.metric(game_labels.get(stat, stat.upper()), all_stats[stat], help=get_stat_help(stat))
+            
+            # Scoring Statistics
+            st.markdown("#### Scoring Statistics")
+            score_cols = st.columns(3)
+            score_stats = ['ppg', 'fgm', 'fga', 'fgp', '3pm', '3pa', '3pp', 'ftm', 'fta', 'ftp']
+            score_labels = {'ppg': 'Points Per Game', 'fgm': 'FG Made', 'fga': 'FG Attempted', 'fgp': 'FG %',
+                           '3pm': '3P Made', '3pa': '3P Attempted', '3pp': '3P %',
+                           'ftm': 'FT Made', 'fta': 'FT Attempted', 'ftp': 'FT %'}
+            for idx, stat in enumerate(score_stats):
+                if stat in all_stats:
+                    with score_cols[idx % 3]:
+                        st.metric(score_labels.get(stat, stat.upper()), all_stats[stat], help=get_stat_help(stat))
+            
+            # Rebounding Statistics
+            st.markdown("#### Rebounding Statistics")
+            reb_cols = st.columns(3)
+            reb_stats = ['rpg', 'oreb', 'dreb']
+            reb_labels = {'rpg': 'Rebounds Per Game', 'oreb': 'Offensive Reb', 'dreb': 'Defensive Reb'}
+            for idx, stat in enumerate(reb_stats):
+                if stat in all_stats:
+                    with reb_cols[idx % 3]:
+                        st.metric(reb_labels.get(stat, stat.upper()), all_stats[stat], help=get_stat_help(stat))
+            
+            # Assists & Defense
+            st.markdown("#### Assists & Defense")
+            def_cols = st.columns(4)
+            def_stats = ['apg', 'spg', 'bpg', 'tpg', 'blka', 'pf', 'pfd']
+            def_labels = {'apg': 'Assists Per Game', 'spg': 'Steals Per Game', 'bpg': 'Blocks Per Game',
+                         'tpg': 'Turnovers Per Game', 'blka': 'Blocked Attempts', 
+                         'pf': 'Personal Fouls', 'pfd': 'Fouls Drawn'}
+            for idx, stat in enumerate(def_stats):
+                if stat in all_stats:
+                    with def_cols[idx % 4]:
+                        st.metric(def_labels.get(stat, stat.upper()), all_stats[stat], help=get_stat_help(stat))
+            
+            # Advanced Metrics
+            st.markdown("#### Advanced Metrics")
+            adv_cols = st.columns(4)
+            adv_stats = ['plus_minus', 'dd2', 'td3', 'fantasy_pts', 'nba_fantasy_pts', 'wnba_fantasy_pts']
+            adv_labels = {'plus_minus': 'Plus/Minus', 'dd2': 'Double-Doubles', 'td3': 'Triple-Doubles',
+                         'fantasy_pts': 'Fantasy Points', 'nba_fantasy_pts': 'NBA Fantasy Pts', 
+                         'wnba_fantasy_pts': 'WNBA Fantasy Pts'}
+            for idx, stat in enumerate(adv_stats):
+                if stat in all_stats:
+                    with adv_cols[idx % 4]:
+                        st.metric(adv_labels.get(stat, stat.upper()), all_stats[stat], help=get_stat_help(stat))
+        else:
+            st.info("No stats available.")
+
 # Header
 # Try to load WNBA logo from local file
 logo_col, title_col = st.columns([1, 4])
@@ -242,7 +353,7 @@ st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Team Selection")
+    st.header("Team Selection")
     
     # Team dropdown
     teams = st.session_state.fetcher.get_all_teams()
@@ -257,15 +368,12 @@ with st.sidebar:
     st.markdown("---")
     
     # Action buttons
-    if st.button("🔄 Fetch Roster from Web", use_container_width=True):
+    if st.button("Fetch Roster from Web", use_container_width=True):
         with st.spinner(f'Fetching roster for {selected_team}...'):
             progress_bar = st.progress(0)
             
             progress_bar.progress(20)
             roster_data = st.session_state.fetcher.fetch_team_roster(selected_team)
-            
-            progress_bar.progress(60)
-            st.session_state.fetcher.save_roster(roster_data)
             
             progress_bar.progress(80)
             st.session_state.current_roster = roster_data
@@ -274,59 +382,93 @@ with st.sidebar:
             time.sleep(0.5)
             progress_bar.empty()
             
-        st.success(f"✅ Roster loaded for {selected_team}!")
+        st.success(f"Roster loaded for {selected_team}!")
         st.rerun()
     
-    if st.button("💾 Load Saved Roster", use_container_width=True):
-        roster_data = st.session_state.fetcher.load_roster(selected_team)
-        if roster_data:
-            st.session_state.current_roster = roster_data
-            st.success(f"✅ Loaded saved roster for {selected_team}!")
-            st.rerun()
-        else:
-            st.warning("⚠️ No saved data found. Try fetching from web first.")
+    if st.session_state.current_roster:
+        # Download buttons
+        st.markdown('### Download Data')
+        
+        roster_json = json.dumps(st.session_state.current_roster, indent=2, ensure_ascii=False)
+        team_slug = st.session_state.current_roster.get('team_slug', 'roster')
+        
+        st.download_button(
+            label='Download Roster Data (JSON)',
+            data=roster_json,
+            file_name=f'{team_slug}_roster.json',
+            mime='application/json',
+            use_container_width=True
+        )
     
-    if st.button("🔄 Fetch All Player Details", use_container_width=True):
+    if st.button("Fetch All Player Details", use_container_width=True):
         if st.session_state.current_roster:
             players = st.session_state.current_roster.get('players', [])
             to_fetch = [p for p in players if not p.get('details_fetched', False)]
             
             if to_fetch:
-                progress_bar = st.progress(0)
-                status_text = st.empty()
+                team_name = st.session_state.current_roster.get('team_name', '')
                 
-                for idx, player in enumerate(to_fetch):
-                    status_text.text(f"Fetching {idx+1}/{len(to_fetch)}: {player.get('name', 'Unknown')}")
-                    progress_bar.progress((idx + 1) / len(to_fetch))
+                with st.spinner(f"Fetching comprehensive stats for {len(to_fetch)} players..."):
+                    # Use the new API-based method
+                    st.session_state.fetcher.fetch_all_player_details(to_fetch, team_name)
                     
-                    details = st.session_state.fetcher.fetch_single_player_details(player.get('id', ''))
-                    player.update(details)
-                    player['details_fetched'] = True
-                
-                st.session_state.fetcher.save_roster(st.session_state.current_roster)
-                
-                progress_bar.empty()
-                status_text.empty()
-                st.success(f"✅ Fetched details for {len(to_fetch)} players!")
+                st.success(f"Fetched comprehensive stats for {len(to_fetch)} players!")
                 st.rerun()
             else:
-                st.info("ℹ️ All player details already loaded!")
+                st.info("All player details already loaded!")
         else:
-            st.warning("⚠️ Please load a roster first!")
+            st.warning("Please load a roster first!")
     
-    if st.button("🗑️ Clear Display", use_container_width=True):
+    if st.button("Clear Display", use_container_width=True):
         st.session_state.current_roster = None
         st.session_state.expanded_players.clear()
         st.rerun()
     
     st.markdown("---")
     
+    # Stats Guide button
+    if st.button("Stats Guide", use_container_width=True, type="secondary"):
+        st.session_state.show_stats_guide = not st.session_state.get('show_stats_guide', False)
+        st.rerun()
+    
+    st.markdown("---")
+    
     # Saved rosters info
     saved_teams = st.session_state.fetcher.get_all_saved_rosters()
-    st.info(f"💾 Saved rosters: {len(saved_teams)} teams")
+    st.info(f"Saved rosters: {len(saved_teams)} teams")
 
 # Main content area
-if st.session_state.current_roster:
+if st.session_state.get('show_stats_guide', False):
+    # Display Stats Guide
+    st.title("Basketball Statistics Guide")
+    
+    if st.button("Close Guide"):
+        st.session_state.show_stats_guide = False
+        st.rerun()
+    
+    st.markdown("---")
+    
+    # Display stats from imported guide
+    for category_name, stats_list in STATS_GUIDE.items():
+        st.header(category_name)
+        
+        # Split into two columns for better layout
+        col1, col2 = st.columns(2)
+        mid_point = (len(stats_list) + 1) // 2
+        
+        with col1:
+            for abbr, name, description in stats_list[:mid_point]:
+                st.markdown(f"**{abbr}** - {name}  \n{description}\n")
+        
+        with col2:
+            for abbr, name, description in stats_list[mid_point:]:
+                st.markdown(f"**{abbr}** - {name}  \n{description}\n")
+        
+        st.markdown("---")
+    
+    st.info(f"**Tip:** {STATS_TIP}")
+
+elif st.session_state.current_roster:
     roster_data = st.session_state.current_roster
     
     # Check if a player is selected
@@ -351,9 +493,9 @@ if st.session_state.current_roster:
         
         # Status check
         if roster_data['status'] == 'expansion_2026':
-            st.warning(f"⚠️ {roster_data.get('message', 'Expansion team - roster not yet available')}")
+            st.warning(f"{roster_data.get('message', 'Expansion team - roster not yet available')}")
         elif roster_data['status'] == 'error':
-            st.error(f"❌ Error: {roster_data.get('error', 'Unknown error occurred')}")
+            st.error(f"Error: {roster_data.get('error', 'Unknown error occurred')}")
         else:
             # Display roster info
             players = roster_data.get('players', [])
@@ -372,7 +514,7 @@ if st.session_state.current_roster:
             
             # Display players
             if players:
-                st.subheader("📋 Team Roster")
+                st.subheader("Team Roster")
                 st.caption("Click on a player's name to view full details")
                 
                 # Sort options
@@ -415,14 +557,14 @@ if st.session_state.current_roster:
                 for idx, player in enumerate(sorted_players):
                     display_player_row(player, idx)
             else:
-                st.info("ℹ️ No players found in roster")
+                st.info("No players found in roster")
 
 else:
     # Welcome screen
-    st.info("👈 Select a team from the sidebar and click 'Fetch Roster from Web' to get started!")
+    st.info("Select a team from the sidebar and click 'Fetch Roster from Web' to get started!")
     
     # Show some stats
-    st.subheader("📊 Quick Stats")
+    st.subheader("Quick Stats")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -435,20 +577,20 @@ else:
     # Instructions
     st.markdown("---")
     st.markdown("""
-    ### 📖 How to Use
+    ### How to Use
     
     1. **Select a team** from the dropdown in the sidebar
     2. **Fetch roster** from the web or load a saved one
     3. **Click on player cards** to expand and view detailed statistics
     4. **Use "Fetch All Details"** to load bio and advanced stats for all players at once
     
-    ### ✨ Features
+    ### Features
     
-    - 🏀 Browse all 15 WNBA teams (including 2026 expansion)
-    - 📸 High-quality player photos
-    - 📊 Comprehensive statistics (PPG, RPG, APG, FG%, 3P%, etc.)
-    - 💾 Save and load roster data
-    - 🔄 Real-time data from official WNBA websites
+    - Browse all 15 WNBA teams (including 2026 expansion)
+    - High-quality player photos
+    - Comprehensive statistics (PPG, RPG, APG, FG%, 3P%, etc.)
+    - Save and load roster data
+    - Real-time data from official WNBA websites
     """)
 
 # Footer

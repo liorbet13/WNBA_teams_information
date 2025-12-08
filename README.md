@@ -1,39 +1,55 @@
 # WNBA Teams Information
 
-A Python desktop application for viewing WNBA team rosters with detailed player information and statistics. The app fetches live data from official WNBA team websites and displays it in an easy-to-use graphical interface.
+A Python application for viewing WNBA team rosters with comprehensive player statistics. Available as both a desktop GUI (Tkinter) and modern web application (Streamlit), the app fetches live data from official WNBA sources and displays detailed player information with 30+ statistical categories.
 
-**this app is a work-in-progress and will be improved**
+**This app is a work-in-progress and will continue to be improved**
 
 ## Future Improvements
 
 The following enhancements are planned for future releases:
 
-1. **Advanced Stats Fetching Improvements** - Fix and enhance the scraping logic for advanced player statistics
-2. **GUI Aesthetic Enhancements** - Modernize the visual design with improved color schemes, layouts, and team branding
-3. **Full Game Data Integration** - Incorporate complete game-by-game statistics, schedules, and performance visualizations
-4. **Data Management Options** - Add ability to delete fetched data and clear cache before closing the application
+1. **Team Information** - Add team statistics, achievements, and enhanced team-specific visualizations
+2. **Full Game Data Integration** - Incorporate complete game-by-game statistics, schedules, and performance visualizations
+3. **Enhanced Visualizations** - Add charts and graphs for stat comparisons and trends
 
 ## Features
 
+### Core Functionality
 - **15 WNBA Teams**: Browse rosters for all 13 current teams (including 2025 expansion team Golden State Valkyries) plus 2 upcoming 2026 expansion teams (Portland Fire, Toronto Tempo)
-- **Quick Roster Loading**: Fast initial load with parallel image fetching (~2-3 seconds)
+- **Quick Roster Loading**: Fast initial load with optimized data fetching (~2-3 seconds)
 - **Player Photos**: High-quality headshots for all players
-- **Basic Statistics**: Points per game (PPG), Rebounds per game (RPG), Assists per game (APG)
-- **Detailed Player Information**: Click any player to view:
-  - Bio information (height, weight, college, experience, birthdate, birthplace)
-  - Advanced statistics (FG%, 3P%, FT%, blocks, steals, turnovers, minutes)
-- **On-Demand Details**: Player details are fetched only when needed for optimal performance
+- **Comprehensive Statistics**: 30+ statistical categories per player from official WNBA API
+
+### Statistical Categories
+- **Basic Stats**: GP, W, L, W%, MPG, PPG, RPG, APG, SPG, BPG, TPG
+- **Shooting Stats**: FGM, FGA, FG%, 3PM, 3PA, 3P%, FTM, FTA, FT%
+- **Rebounding**: OREB, DREB, Total Rebounds
+- **Defense**: Steals, Blocks, Blocked Attempts, Personal Fouls, Fouls Drawn
+- **Advanced Metrics**: +/-, Double-Doubles, Triple-Doubles, Fantasy Points
+
+### User Experience Features
+- **Interactive Tooltips (Web App)**: Hover over any stat to see its definition instantly - no need to switch to the guide
+- **Basketball Stats Guide**: Built-in dictionary explaining all basketball statistics with definitions and descriptions
+- **On-Demand Details**: Player bio and advanced stats fetched only when needed for optimal performance
 - **Bulk Fetch**: "Fetch All Details" button to load all player information at once
-- **Save Rosters**: Export team rosters to JSON files for offline viewing
+- **Download Rosters**: Export team rosters to JSON files for offline analysis
+- **Show All Stats**: Deep dive view displaying all 30+ comprehensive stat categories organized by category
+
+### Web Application (Streamlit) Exclusive Features
+- Modern, responsive design with WNBA branding
+- Built-in progress indicators and smooth interactions
+- Mobile-friendly interface
+- Image caching for faster repeat visits
+- Enhanced data visualization
 
 ## Screenshots
 
-The app displays players in a clean grid layout with:
-- Player number and name
-- Position
-- Basic statistics (PPG, RPG, APG)
+The app displays players in a clean, organized layout with:
+- Player number, name, and position
+- Key statistics (PPG, RPG, APG)
 - Player headshot photo
 - Click-to-expand details panel
+- Comprehensive stats breakdown
 
 ## Requirements
 
@@ -103,47 +119,97 @@ This will automatically open your browser to `http://localhost:8501` with the we
 
 ### Using the Application
 
-1. **Select a Team**: Choose a team from the dropdown menu at the top
-2. **Fetch Roster**: Click "Fetch Roster" to load the team's current roster
-3. **View Basic Info**: See player photos, numbers, positions, and basic stats
-4. **View Details**: Click on any player to expand and view detailed bio and statistics
-5. **Fetch All Details**: Click "Fetch All Details" to load information for all players at once
-6. **Save Roster**: Click "Save Roster" to export the data to a JSON file
+1. **Select a Team**: Choose a team from the dropdown menu
+2. **Fetch Roster**: Click "Fetch Roster from Web" to load the team's current roster
+3. **View Basic Info**: See player photos, numbers, positions, and key stats
+4. **View Player Details**: Click on any player name to expand and view comprehensive bio and statistics
+5. **Fetch All Details**: Click "Fetch All Player Details" to load comprehensive stats for all players at once
+6. **Download Roster**: Click "Download Roster Data" to export the data to a JSON file
+7. **Stats Guide**: Click "Stats Guide" to view a comprehensive basketball statistics dictionary
+8. **Show All Stats**: For any player, click "Show All Stats" to see all 30+ statistical categories organized by type
 
-### Saved Data
+### Interactive Tooltips (Web App Only)
 
-Roster data is saved in the `team_rosters/` directory as JSON files:
-- Format: `{team_slug}_roster.json`
+When viewing player stats in the web app, hover over the (?) icon next to any statistic to instantly see its definition. For example:
+- Hover over "PPG" → "Points Per Game: Average number of points scored per game"
+- Hover over "+/-" → "Plus/Minus: Point differential when player is on court"
+- Hover over "FG%" → "Field Goal Percentage: Percentage of field goals made"
+
+No need to switch views - definitions appear right where you need them!
+
+### Downloaded Data
+
+Roster data is downloaded as JSON files with the naming format: `{team_slug}_roster.json`
 - Example: `fever_roster.json` for Indiana Fever
+- Contains complete player information including all 30+ stat categories
+- Can be opened in any text editor or JSON viewer
 
 ## Project Structure
 
 ```
 WNBA_teams_information/
 ├── roster_gui.py          # Desktop GUI application (Tkinter)
-├── roster_webapp.py       # Web application (Streamlit) ⭐ NEW!
+├── roster_webapp.py       # Web application (Streamlit)
 ├── roster_fetcher.py      # Business logic for fetching roster data
+├── stats_guide.py         # Basketball statistics definitions and guide
 ├── test_roster.py         # Unit tests
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
-├── .gitignore            # Git ignore rules
-└── team_rosters/         # Saved roster JSON files (created automatically)
+└── .gitignore            # Git ignore rules
 ```
 
 ## Technical Details
 
 ### Data Sources
 
-- **Team Rosters**: Fetched from `https://{team-slug}.wnba.com/roster/`
-- **Player Details**: Fetched from `https://www.wnba.com/player/{player-id}`
-- **Player Photos**: Loaded from WNBA CDN at `https://cdn.wnba.com/headshots/`
+- **Team Rosters & Player Stats**: Official WNBA Stats API at `https://stats.wnba.com/stats/leaguedashplayerstats`
+  - Provides 67 comprehensive statistical categories per player
+  - Requires `LeagueID='10'` parameter for WNBA data
+  - Includes per-game averages, shooting percentages, advanced metrics
+- **Player Bio Information**: Individual player pages at `https://www.wnba.com/player/{player-id}`
+  - Height, weight, college, experience, birth date, birth place
+- **Player Photos**: WNBA CDN at `https://cdn.wnba.com/headshots/`
+
+### API Integration
+
+The application uses the official WNBA Stats API to fetch comprehensive player statistics:
+
+```python
+# API endpoint
+https://stats.wnba.com/stats/leaguedashplayerstats
+
+# Required parameters
+LeagueID='10'              # WNBA league identifier
+Season='2025'              # Current season
+SeasonType='Regular Season'
+PerMode='PerGame'          # Per-game averages
+
+# Required headers
+User-Agent: Mozilla/5.0...
+Referer: https://stats.wnba.com
+```
+
+### Statistical Categories (67 Total)
+
+The API provides comprehensive statistics including:
+- **Player identification**: PLAYER_ID, PLAYER_NAME, NICKNAME, TEAM_ABBREVIATION, AGE
+- **Game statistics**: GP (games played), W (wins), L (losses), W_PCT, MIN (minutes)
+- **Scoring**: PTS, FGM, FGA, FG_PCT, FG3M, FG3A, FG3_PCT, FTM, FTA, FT_PCT
+- **Rebounds**: OREB, DREB, REB
+- **Other stats**: AST, TOV, STL, BLK, BLKA, PF, PFD
+- **Advanced metrics**: PLUS_MINUS, DD2 (double-doubles), TD3 (triple-doubles), NBA_FANTASY_PTS, WNBA_FANTASY_PTS
+
+Note: 30 ranking fields (ending in `_RANK`) are filtered out for cleaner display.
 
 ### Performance Optimizations
 
-- **Parallel HTTP Requests**: Uses ThreadPoolExecutor with 8 concurrent workers
+- **Official API Integration**: Direct access to WNBA Stats API provides all 67 stat categories in a single request per team
+- **Parallel HTTP Requests**: Uses ThreadPoolExecutor with 8 concurrent workers for fetching player bio information
 - **Parallel Image Loading**: Downloads multiple player photos simultaneously
-- **On-Demand Details**: Bio and advanced stats fetched only when user clicks a player
-- **Caching**: Downloaded images are cached in memory during the session
+- **On-Demand Details**: Bio information fetched only when user clicks a player
+- **Image Caching**: Downloaded images cached in memory during the session (web app)
+- **Lazy Loading (Web App)**: Simple roster table loads instantly, full details load on-demand
+- **Interactive Tooltips (Web App)**: Stat definitions available on hover with zero performance cost (client-side rendering, O(1) dictionary lookup)
 
 ### Teams Supported
 
@@ -152,7 +218,7 @@ WNBA_teams_information/
 - Chicago Sky
 - Connecticut Sun
 - Dallas Wings
-- Golden State Valkyries (2025 expansion team)
+- Golden State Valkyries 
 - Indiana Fever
 - Las Vegas Aces
 - Los Angeles Sparks
@@ -199,7 +265,13 @@ python test_roster.py
 **Solution**: Photos load asynchronously. Wait a few seconds. Some players may not have photos available
 
 **Issue**: Advanced stats showing "--"  
-**Solution**: Click on the player to fetch detailed stats. Some stats may not be available for all players
+**Solution**: Click "Fetch All Player Details" to load comprehensive stats from the WNBA API. Bio information is fetched from individual player pages when you click on a player.
+
+**Issue**: Stats Guide button not visible (Web App)  
+**Solution**: The "Stats Guide" button is located in the sidebar below the "Clear Display" button. Scroll down in the sidebar if needed.
+
+**Issue**: Tooltips not showing (Web App)  
+**Solution**: Hover over the (?) icon next to any stat metric. If tooltips aren't appearing, ensure you're using a modern browser (Chrome, Firefox, Edge, Safari).
 
 ## Bug Fixes & Performance Improvements
 
@@ -329,25 +401,73 @@ if st.session_state.selected_player_id:
 | Mobile friendly | No | Yes |
 | Deployment | Local only | Can deploy to cloud |
 
-### Advanced Stats Scraping Refinement
+### Stats Guide & Interactive Tooltips
 
-**Problem:** Initial attempts to scrape advanced statistics from stats.wnba.com using Selenium encountered multiple issues:
-- JavaScript-heavy pages required browser automation
-- AJAX/dynamic content loading made table parsing difficult
-- Unicode encoding errors on Windows (Hebrew locale)
-- Selenium added complexity and 4+ second overhead per team
+**Problem:** Users unfamiliar with basketball statistics needed a reference guide to understand abbreviations and metrics.
 
 **Solution Implemented:**
-- **Removed Selenium dependency**: Eliminated browser automation complexity
-- **Individual player page scraping**: Advanced stats now fetched from static player profile pages
-- **On-demand fetching**: Stats only loaded when user requests player details
-- **Simplified requirements**: Removed selenium from dependencies, reducing setup complexity
+
+1. **Basketball Statistics Dictionary** (`stats_guide.py`)
+   - Comprehensive guide with 30+ stat definitions
+   - Organized into 4 categories: Basic Statistics, Shooting Statistics, Rebounding Statistics, Advanced Metrics
+   - Each stat includes: abbreviation, full name, and detailed description
+   - Accessible via "Stats Guide" button in both applications
+
+2. **Interactive Tooltips (Web App)**
+   - Hover-based tooltips on all stat metrics using Streamlit's built-in `help` parameter
+   - `STAT_DEFINITIONS` lookup dictionary for instant access (O(1) performance)
+   - Zero performance cost - definitions rendered client-side
+   - Covers all 50+ statistics displayed in the application
+   
+3. **Desktop GUI Stats Guide Window**
+   - Scrollable popup window with categorized stat definitions
+   - Professional layout with WNBA branding
+   - Mouse wheel scrolling support
+
+**User Experience Impact:**
+- Users can learn about stats without leaving the app
+- Web app users get instant definitions on hover (no clicking required)
+- Educational value for users new to basketball analytics
+- Professional, self-documenting interface
+
+**Technical Implementation:**
+```python
+# stats_guide.py
+STAT_DEFINITIONS = {
+    'ppg': 'Points Per Game: Average number of points scored per game',
+    'fg_pct': 'Field Goal Percentage: Percentage of field goals made',
+    # ... 50+ definitions
+}
+
+# roster_webapp.py - Tooltip usage
+st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
+```
+
+### UI/UX Improvements
+
+**Changes Implemented:**
+
+1. **Emoji Removal**: Removed all emojis from both applications for a clean, professional appearance
+   - Changed headers from "📋 Team Roster" to "Team Roster"
+   - Updated buttons, messages, and labels across 30+ locations
+   - Photo placeholders changed from "📷" to "[No Photo]"
+   - Indicators changed from "✓ Details" to "[Details]"
+
+2. **Section Cleanup**: Removed redundant "Player & Team Info" section that duplicated data already shown elsewhere
+
+3. **Stats Organization**: Reorganized "Show All Stats" feature with 6 clear categories:
+   - Bio Information (6 fields)
+   - Game Statistics (5 fields)
+   - Scoring Statistics (10 fields)
+   - Rebounding Statistics (3 fields)
+   - Assists & Defense (7 fields)
+   - Advanced Metrics (6 fields)
 
 **Impact:**
-- Cleaner codebase without browser automation overhead
-- More reliable data fetching from static HTML pages
-- Easier setup (no ChromeDriver installation needed)
-- Better error handling for missing stats
+- More professional, business-ready appearance
+- Better information architecture
+- Easier navigation through comprehensive stats
+- Suitable for presentations and demonstrations
 
 ## License
 

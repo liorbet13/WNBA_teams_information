@@ -4,8 +4,9 @@ Allows users to select teams and fetch/view roster data
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from roster_fetcher import WNBARosterFetcher
+from stats_guide import STATS_GUIDE, STATS_TIP
 import json
 from PIL import Image, ImageTk
 import requests
@@ -53,9 +54,6 @@ class RosterViewerGUI:
         
         # Setup the UI
         self.setup_ui()
-        
-        # Load initial data
-        self.update_saved_teams_label()
     
     def setup_ui(self):
         """Create and layout all UI elements"""
@@ -149,10 +147,10 @@ class RosterViewerGUI:
         )
         fetch_btn.pack(side=tk.LEFT, padx=5)
         
-        load_btn = tk.Button(
+        download_btn = tk.Button(
             button_frame,
-            text="Load Saved Roster",
-            command=self.load_roster,
+            text="Download Roster Data",
+            command=self.download_roster,
             bg=self.wnba_black,
             fg=self.wnba_white,
             font=("Arial", 11, "bold"),
@@ -161,7 +159,7 @@ class RosterViewerGUI:
             cursor="hand2",
             relief=tk.FLAT
         )
-        load_btn.pack(side=tk.LEFT, padx=5)
+        download_btn.pack(side=tk.LEFT, padx=5)
         
         fetch_all_btn = tk.Button(
             button_frame,
@@ -191,15 +189,19 @@ class RosterViewerGUI:
         )
         clear_btn.pack(side=tk.LEFT, padx=5)
         
-        # Saved rosters info
-        self.saved_label = tk.Label(
-            selection_frame,
-            text="Saved rosters: 0 teams",
-            font=("Arial", 9),
-            bg=self.wnba_light_gray,
-            fg=self.wnba_orange
+        guide_btn = tk.Button(
+            button_frame,
+            text="Stats Guide",
+            command=self.show_stats_guide,
+            bg="#006BB6",
+            fg=self.wnba_white,
+            font=("Arial", 11),
+            padx=20,
+            pady=10,
+            cursor="hand2",
+            relief=tk.FLAT
         )
-        self.saved_label.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        guide_btn.pack(side=tk.LEFT, padx=5)
         
         # Display area
         display_frame = tk.LabelFrame(
@@ -384,11 +386,6 @@ class RosterViewerGUI:
                 # Fetch the roster (without detailed player info)
                 roster_data = self.fetcher.fetch_team_roster(team_name)
                 
-                self.root.after(0, lambda: self.update_progress(60))
-                
-                # Save the roster
-                filepath = self.fetcher.save_roster(roster_data)
-                
                 self.root.after(0, lambda: self.update_progress(80))
                 
                 # Store and display the roster
@@ -397,7 +394,6 @@ class RosterViewerGUI:
                 
                 self.root.after(0, lambda: self.update_progress(100))
                 self.root.after(0, lambda: self.status_var.set(f"Roster loaded! Click players for details."))
-                self.root.after(0, self.update_saved_teams_label)
                 
                 # Keep progress bar at 100% for at least 1.5 seconds before resetting
                 self.root.after(1500, self.hide_progress)
@@ -415,27 +411,43 @@ class RosterViewerGUI:
         # Run in background thread
         threading.Thread(target=fetch_in_background, daemon=True).start()
     
-    def load_roster(self):
-        """Load saved roster data from file"""
-        team_name = self.team_var.get()
-        
-        if not team_name:
-            messagebox.showwarning("No Team Selected", "Please select a team first.")
-            return
-        
-        roster_data = self.fetcher.load_roster(team_name)
-        
-        if roster_data is None:
+    def download_roster(self):
+        """Download roster data to JSON file"""
+        if not self.current_roster_data:
             messagebox.showwarning(
-                "No Saved Data",
-                f"No saved roster data found for {team_name}.\nTry fetching from web first."
+                "No Data",
+                "Please fetch a roster first before downloading."
             )
-            self.status_var.set(f"No saved data for {team_name}")
             return
         
-        self.current_roster_data = roster_data
-        self.display_roster(roster_data)
-        self.status_var.set(f"Loaded saved roster for {team_name}")
+        # Get team slug for filename
+        team_slug = self.current_roster_data.get('team_slug', 'roster')
+        default_filename = f"{team_slug}_roster.json"
+        
+        # Ask user where to save
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            initialfile=default_filename,
+            title="Save Roster Data"
+        )
+        
+        if filepath:
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(self.current_roster_data, f, indent=2, ensure_ascii=False)
+                
+                messagebox.showinfo(
+                    "Success",
+                    f"Roster data saved to:\n{filepath}"
+                )
+                self.status_var.set(f"Downloaded roster data to {filepath}")
+            except Exception as e:
+                messagebox.showerror(
+                    "Error",
+                    f"Failed to save file:\n{str(e)}"
+                )
+                self.status_var.set("Download failed")
     
     def display_roster(self, roster_data):
         """
@@ -457,13 +469,13 @@ class RosterViewerGUI:
         
         if status == 'expansion_2026':
             self.info_label.config(
-                text=f"⚠ {roster_data['message']}",
+                text=f"[Warning] {roster_data['message']}",
                 fg='orange'
             )
             return
         elif status == 'error':
             self.info_label.config(
-                text=f"❌ ERROR: {roster_data.get('error', 'Unknown error')}",
+                text=f"ERROR: {roster_data.get('error', 'Unknown error')}",
                 fg='red'
             )
             return
@@ -536,7 +548,7 @@ class RosterViewerGUI:
                                args=(image_url, player_id, photo_label), 
                                daemon=True).start()
             else:
-                photo_label.config(text='📷', font=('Arial', 20))
+                photo_label.config(text='[No Photo]', font=('Arial', 9))
             
             # Number
             num_label = tk.Label(player_frame, text=player.get('number', '--'), bg=bg_color,
@@ -579,7 +591,7 @@ class RosterViewerGUI:
             
             # Click indicator
             details_fetched = player.get('details_fetched', False)
-            indicator_text = "✓ Details" if details_fetched else "Click to load"
+            indicator_text = "[Details]" if details_fetched else "Click to load"
             indicator_label = tk.Label(player_frame, text=indicator_text, bg=bg_color,
                     font=('Arial', 9, 'italic'), width=20, anchor='w',
                     fg='green' if details_fetched else '#666666', cursor="hand2")
@@ -615,8 +627,8 @@ class RosterViewerGUI:
                 self.root.after(0, lambda: label_widget.config(image=photo))
         except Exception as e:
             # Show emoji if image fails to load (schedule on main thread)
-            self.root.after(0, lambda: label_widget.config(text='📷', font=('Arial', 20)))
-            label_widget.config(text='📷', font=('Arial', 20))
+            self.root.after(0, lambda: label_widget.config(text='[No Photo]', font=('Arial', 9)))
+            label_widget.config(text='[No Photo]', font=('Arial', 9))
     
     def clear_display(self):
         """Clear the display"""
@@ -649,14 +661,20 @@ class RosterViewerGUI:
         if not player.get('details_fetched', False):
             # Show progress bar
             self.show_progress()
-            self.status_var.set(f"Fetching details for {player_name}...")
+            self.status_var.set(f"Fetching comprehensive stats for {player_name}...")
             self.root.update()
             
             # Fetch in background thread
             def fetch_and_display():
                 self.root.after(0, lambda: self.update_progress(30))
                 
-                details = self.fetcher.fetch_single_player_details(player_id)
+                # Get team name and fetch API stats
+                team_name = self.current_roster_data.get('team_name', '') if self.current_roster_data else ''
+                api_stats_dict = self.fetcher.fetch_team_stats_from_api(team_name)
+                api_stats = api_stats_dict.get(player_name, None)
+                
+                # Fetch details with API stats
+                details = self.fetcher.fetch_single_player_details(player_id, player_name, api_stats)
                 player.update(details)
                 player['details_fetched'] = True
                 
@@ -676,7 +694,7 @@ class RosterViewerGUI:
                 
                 # Update display on main thread
                 self.root.after(0, lambda: self._show_expanded_details(player))
-                self.root.after(0, lambda: self.status_var.set(f"Loaded details for {player_name}"))
+                self.root.after(0, lambda: self.status_var.set(f"Loaded comprehensive stats for {player_name}"))
                 
                 # Keep progress bar at 100% for at least 1.5 seconds before resetting
                 self.root.after(1500, self.hide_progress)
@@ -710,7 +728,7 @@ class RosterViewerGUI:
                 title_frame = tk.Frame(details_frame, bg='#E8F4F8')
                 title_frame.pack(fill=tk.X, pady=(10, 5))
                 
-                tk.Label(title_frame, text=f"📊 Complete Profile: {player.get('name')}", 
+                tk.Label(title_frame, text=f"Complete Profile: {player.get('name')}", 
                         bg='#E8F4F8', font=('Arial', 12, 'bold'),
                         fg=self.wnba_orange).pack()
                 
@@ -719,7 +737,7 @@ class RosterViewerGUI:
                 content_frame.pack(pady=10, padx=20, fill=tk.BOTH)
                 
                 # Left column - Bio Information
-                bio_frame = tk.LabelFrame(content_frame, text="📋 Bio Information", 
+                bio_frame = tk.LabelFrame(content_frame, text="Bio Information", 
                                          font=('Arial', 10, 'bold'), bg='white',
                                          fg=self.wnba_black, padx=15, pady=10)
                 bio_frame.grid(row=0, column=0, sticky='nsew', padx=5)
@@ -740,7 +758,7 @@ class RosterViewerGUI:
                             bg='white', anchor='w').grid(row=idx, column=1, sticky='w', padx=5, pady=3)
                 
                 # Right column - Statistics
-                stats_frame = tk.LabelFrame(content_frame, text="📈 Season Statistics", 
+                stats_frame = tk.LabelFrame(content_frame, text="Season Statistics", 
                                            font=('Arial', 10, 'bold'), bg='white',
                                            fg=self.wnba_black, padx=15, pady=10)
                 stats_frame.grid(row=0, column=1, sticky='nsew', padx=5)
@@ -792,17 +810,201 @@ class RosterViewerGUI:
                 content_frame.columnconfigure(0, weight=1)
                 content_frame.columnconfigure(1, weight=1)
                 
+                # Button frame for actions
+                button_frame = tk.Frame(details_frame, bg='#E8F4F8')
+                button_frame.pack(pady=(5, 15))
+                
+                # View all stats button
+                view_all_btn = tk.Button(button_frame, text="Show All Stats", 
+                                        command=lambda p=player: self.show_all_stats_window(p),
+                                        bg='#006BB6', fg='white', font=('Arial', 9, 'bold'),
+                                        padx=15, pady=7, cursor="hand2", relief=tk.FLAT)
+                view_all_btn.pack(side=tk.LEFT, padx=5)
+                
                 # Close button
-                close_btn = tk.Button(details_frame, text="✕ Close Details", 
+                close_btn = tk.Button(button_frame, text="Close Details", 
                                      command=lambda: self.toggle_player_details(player),
                                      bg=self.wnba_orange, fg='white', font=('Arial', 9, 'bold'),
                                      padx=20, pady=7, cursor="hand2", relief=tk.FLAT)
-                close_btn.pack(pady=(5, 15))
+                close_btn.pack(side=tk.LEFT, padx=5)
                 
                 break
     
+    def show_all_stats_window(self, player):
+        """
+        Show a popup window with all 67 stat categories
+        
+        Args:
+            player (dict): Player dictionary with all stats
+        """
+        # Create new window
+        stats_window = tk.Toplevel(self.root)
+        stats_window.title(f"All Stats - {player.get('name', 'Unknown')}")
+        stats_window.geometry("800x600")
+        stats_window.configure(bg='white')
+        
+        # Header
+        header_frame = tk.Frame(stats_window, bg=self.wnba_orange, height=60)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame, 
+                text=f"Complete Statistical Breakdown - {player.get('name', 'Unknown')}", 
+                bg=self.wnba_orange, fg='white',
+                font=('Arial', 14, 'bold')).pack(expand=True)
+        
+        # Create scrollable frame
+        canvas = tk.Canvas(stats_window, bg='white')
+        scrollbar = tk.Scrollbar(stats_window, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Prepare stats - exclude non-stat fields and rankings
+        exclude_fields = {'id', 'name', 'number', 'position', 'image_url', 'details_fetched'}
+        
+        # Categorize stats (including all available stats)
+        bio_fields = {'height', 'weight', 'college', 'experience', 'birth_date', 'birth_place'}
+        game_stats = {'gp', 'w', 'l', 'w_pct', 'mpg'}
+        scoring_stats = {'ppg', 'fgm', 'fga', 'fgp', '3pm', '3pa', '3pp', 'ftm', 'fta', 'ftp'}
+        rebound_stats = {'rpg', 'oreb', 'dreb'}
+        assist_defense_stats = {'apg', 'spg', 'bpg', 'tpg', 'blka', 'pf', 'pfd'}
+        advanced_stats = {'plus_minus', 'dd2', 'td3', 'fantasy_pts', 'nba_fantasy_pts', 'wnba_fantasy_pts'}
+        
+        y_pos = 10
+        
+        # Helper function to create stat section
+        def create_stat_section(title, stat_keys, labels_map):
+            nonlocal y_pos
+            
+            section_frame = tk.LabelFrame(scrollable_frame, text=title, 
+                                         font=('Arial', 11, 'bold'),
+                                         bg='white', fg=self.wnba_orange,
+                                         padx=15, pady=10)
+            section_frame.pack(fill=tk.X, padx=20, pady=10)
+            
+            row = 0
+            col = 0
+            max_cols = 3
+            
+            for stat_key in stat_keys:
+                value = player.get(stat_key, '--')
+                if value or value == 0:  # Show if has value or is 0
+                    label_text = labels_map.get(stat_key, stat_key.upper())
+                    
+                    tk.Label(section_frame, text=f"{label_text}:", 
+                            font=('Arial', 9, 'bold'),
+                            bg='white', anchor='e').grid(row=row, column=col*2, 
+                                                         sticky='e', padx=5, pady=3)
+                    tk.Label(section_frame, text=str(value), 
+                            font=('Arial', 9),
+                            bg='white', fg='#006BB6', anchor='w').grid(row=row, column=col*2+1, 
+                                                                       sticky='w', padx=5, pady=3)
+                    
+                    col += 1
+                    if col >= max_cols:
+                        col = 0
+                        row += 1
+        
+        # Bio Information
+        bio_labels = {
+            'height': 'Height', 'weight': 'Weight', 'college': 'College',
+            'experience': 'Experience', 'birth_date': 'Birth Date', 'birth_place': 'Birth Place'
+        }
+        create_stat_section("Bio Information", bio_fields, bio_labels)
+        
+        # Game Stats
+        game_labels = {
+            'gp': 'Games Played', 'w': 'Wins', 'l': 'Losses', 'w_pct': 'Win Percentage', 'mpg': 'Minutes Per Game'
+        }
+        create_stat_section("Game Statistics", game_stats, game_labels)
+        
+        # Scoring
+        scoring_labels = {
+            'ppg': 'Points Per Game', 'fgm': 'FG Made', 'fga': 'FG Attempted',
+            'fgp': 'FG Percentage', '3pm': '3-Pointers Made', '3pa': '3-Pointers Attempted',
+            '3pp': '3-Point Percentage', 'ftm': 'Free Throws Made', 'fta': 'Free Throws Attempted',
+            'ftp': 'Free Throw Percentage'
+        }
+        create_stat_section("Scoring & Shooting", scoring_stats, scoring_labels)
+        
+        # Rebounding
+        rebound_labels = {
+            'rpg': 'Rebounds Per Game', 'oreb': 'Offensive Rebounds', 'dreb': 'Defensive Rebounds'
+        }
+        create_stat_section("Rebounding", rebound_stats, rebound_labels)
+        
+        # Assists & Defense
+        assist_defense_labels = {
+            'apg': 'Assists Per Game', 'spg': 'Steals Per Game', 'bpg': 'Blocks Per Game',
+            'tpg': 'Turnovers Per Game', 'blka': 'Blocked Attempts', 'pf': 'Personal Fouls', 'pfd': 'Fouls Drawn'
+        }
+        create_stat_section("Assists & Defense", assist_defense_stats, assist_defense_labels)
+        
+        # Advanced Stats
+        advanced_labels = {
+            'plus_minus': 'Plus/Minus', 'dd2': 'Double-Doubles', 'td3': 'Triple-Doubles',
+            'fantasy_pts': 'Fantasy Points', 'nba_fantasy_pts': 'NBA Fantasy Points', 
+            'wnba_fantasy_pts': 'WNBA Fantasy Points'
+        }
+        create_stat_section("Advanced Metrics", advanced_stats, advanced_labels)
+        
+        # Any remaining stats not categorized (excluding rankings)
+        all_categorized = bio_fields | game_stats | scoring_stats | rebound_stats | assist_defense_stats | advanced_stats
+        remaining = {}
+        for key, value in player.items():
+            if key not in exclude_fields and key not in all_categorized and not key.endswith('_RANK') and value:
+                remaining[key] = value
+        
+        if remaining:
+            remaining_frame = tk.LabelFrame(scrollable_frame, text="Additional API Stats", 
+                                           font=('Arial', 11, 'bold'),
+                                           bg='white', fg=self.wnba_orange,
+                                           padx=15, pady=10)
+            remaining_frame.pack(fill=tk.X, padx=20, pady=10)
+            
+            row = 0
+            col = 0
+            for stat_key, value in remaining.items():
+                tk.Label(remaining_frame, text=f"{stat_key.upper()}:", 
+                        font=('Arial', 9, 'bold'),
+                        bg='white', anchor='e').grid(row=row, column=col*2, 
+                                                     sticky='e', padx=5, pady=3)
+                tk.Label(remaining_frame, text=str(value), 
+                        font=('Arial', 9),
+                        bg='white', fg='#006BB6', anchor='w').grid(row=row, column=col*2+1, 
+                                                                   sticky='w', padx=5, pady=3)
+                
+                col += 1
+                if col >= 3:
+                    col = 0
+                    row += 1
+        
+        # Close button at bottom
+        close_btn = tk.Button(scrollable_frame, text="Close", 
+                             command=stats_window.destroy,
+                             bg=self.wnba_orange, fg='white', font=('Arial', 10, 'bold'),
+                             padx=30, pady=10, cursor="hand2", relief=tk.FLAT)
+        close_btn.pack(pady=20)
+        
+        # Bind mouse wheel to scroll
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
+        stats_window.protocol("WM_DELETE_WINDOW", lambda: [canvas.unbind_all("<MouseWheel>"), stats_window.destroy()])
+    
     def fetch_all_details(self):
-        """Fetch details for all players in parallel"""
+        """Fetch comprehensive stats for all players using API"""
         if not self.current_roster_data:
             messagebox.showwarning("No Roster Loaded", "Please load or fetch a roster first.")
             return
@@ -820,45 +1022,29 @@ class RosterViewerGUI:
         
         # Show progress bar
         self.show_progress()
-        self.status_var.set(f"Fetching details for {len(to_fetch)} players...")
+        self.status_var.set(f"Fetching comprehensive stats for {len(to_fetch)} players...")
         self.root.update()
         
         def fetch_in_background():
             total = len(to_fetch)
+            team_name = self.current_roster_data.get('team_name', '')
             
-            # Update progress as we fetch
-            def update_progress_func(completed):
-                progress = (completed / total) * 100
-                self.root.after(0, lambda p=progress: self.update_progress(p))
-                self.root.after(0, lambda c=completed, t=total: 
-                              self.status_var.set(f"Fetching details... {c}/{t} players"))
+            # Update progress
+            self.root.after(0, lambda: self.update_progress(20))
+            self.root.after(0, lambda: self.status_var.set(f"Fetching API stats for {team_name}..."))
             
-            # Fetch with progress updates
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-            with ThreadPoolExecutor(max_workers=8) as executor:
-                futures = {executor.submit(self.fetcher._fetch_player_details, player): player 
-                          for player in to_fetch}
-                
-                completed = 0
-                for future in as_completed(futures):
-                    try:
-                        future.result()
-                        completed += 1
-                        update_progress_func(completed)
-                    except Exception as e:
-                        print(f"Error fetching player details: {e}")
+            # Use new API-based method
+            self.fetcher.fetch_all_player_details(to_fetch, team_name)
             
             # Mark as fetched
             for player in to_fetch:
                 player['details_fetched'] = True
             
-            # Save updated roster
-            self.fetcher.save_roster(self.current_roster_data)
-            
             # Refresh display
+            self.root.after(0, lambda: self.update_progress(90))
             self.root.after(0, lambda: self.display_roster(self.current_roster_data))
             self.root.after(0, lambda: self.update_progress(100))
-            self.root.after(0, lambda t=total: self.status_var.set(f"Loaded details for all {t} players!"))
+            self.root.after(0, lambda t=total: self.status_var.set(f"Loaded comprehensive stats for all {t} players!"))
             
             # Keep progress bar at 100% for at least 1.5 seconds before resetting
             self.root.after(1500, self.hide_progress)
@@ -868,11 +1054,92 @@ class RosterViewerGUI:
         # Run in background thread
         threading.Thread(target=fetch_in_background, daemon=True).start()
     
-    def update_saved_teams_label(self):
-        """Update the label showing how many teams have saved data"""
-        saved_teams = self.fetcher.get_all_saved_rosters()
-        count = len(saved_teams)
-        self.saved_label.config(text=f"Saved rosters: {count} teams")
+    def show_stats_guide(self):
+        """Show a window with basketball statistics guide"""
+        guide_window = tk.Toplevel(self.root)
+        guide_window.title("Basketball Statistics Guide")
+        guide_window.geometry("900x700")
+        guide_window.configure(bg='white')
+        
+        # Header
+        header_frame = tk.Frame(guide_window, bg=self.wnba_orange, height=60)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame, 
+                text="Basketball Statistics Guide", 
+                bg=self.wnba_orange, fg='white',
+                font=('Arial', 16, 'bold')).pack(expand=True)
+        
+        # Create scrollable frame
+        canvas = tk.Canvas(guide_window, bg='white')
+        scrollbar = tk.Scrollbar(guide_window, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Display stats from imported guide
+        for category_name, stats_list in STATS_GUIDE.items():
+            # Category header
+            category_frame = tk.LabelFrame(scrollable_frame, text=category_name,
+                                          font=('Arial', 12, 'bold'),
+                                          bg='white', fg=self.wnba_orange,
+                                          padx=15, pady=10)
+            category_frame.pack(fill=tk.X, padx=20, pady=10)
+            
+            for abbr, name, description in stats_list:
+                stat_frame = tk.Frame(category_frame, bg='white')
+                stat_frame.pack(fill=tk.X, pady=3)
+                
+                tk.Label(stat_frame, text=f"{abbr}",
+                        font=('Arial', 9, 'bold'),
+                        bg='white', fg=self.wnba_orange,
+                        width=12, anchor='w').pack(side=tk.LEFT)
+                
+                tk.Label(stat_frame, text=f"{name}",
+                        font=('Arial', 9, 'bold'),
+                        bg='white', width=25, anchor='w').pack(side=tk.LEFT)
+                
+                tk.Label(stat_frame, text=description,
+                        font=('Arial', 9),
+                        bg='white', wraplength=400, anchor='w').pack(side=tk.LEFT, padx=10)
+        
+        # Tip box
+        tip_frame = tk.Frame(scrollable_frame, bg='#E8F4F8', relief=tk.RIDGE, borderwidth=2)
+        tip_frame.pack(fill=tk.X, padx=20, pady=20)
+        
+        tk.Label(tip_frame, text="Tip:",
+                font=('Arial', 10, 'bold'),
+                bg='#E8F4F8', fg=self.wnba_orange).pack(anchor='w', padx=10, pady=(10, 5))
+        
+        tk.Label(tip_frame, 
+                text=STATS_TIP,
+                font=('Arial', 9),
+                bg='#E8F4F8', wraplength=800, justify='left').pack(anchor='w', padx=10, pady=(0, 10))
+        
+        # Close button
+        close_btn = tk.Button(scrollable_frame, text="Close",
+                             command=guide_window.destroy,
+                             bg=self.wnba_orange, fg='white',
+                             font=('Arial', 10, 'bold'),
+                             padx=30, pady=10, cursor="hand2", relief=tk.FLAT)
+        close_btn.pack(pady=20)
+        
+        # Bind mouse wheel
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
+        guide_window.protocol("WM_DELETE_WINDOW", lambda: [canvas.unbind_all("<MouseWheel>"), guide_window.destroy()])
 
 
 def main():
