@@ -316,16 +316,6 @@ For detailed information about recent updates, bug fixes, and implementation det
 - Team season statistics integration
 - Enhanced player statistics with 37+ fields
 - Improved navigation and UI polish
-
-## Changelog
-
-For detailed information about recent updates, bug fixes, and implementation details, see [CHANGELOG.md](CHANGELOG.md).
-
-**Recent highlights:**
-- Visual team selection with logo grid (January 2026)
-- Team season statistics integration
-- Enhanced player statistics with 37+ fields
-- Improved navigation and UI polish
 - Official WNBA Stats API integration for comprehensive player data
 - Basketball Stats Guide with interactive tooltips
 
