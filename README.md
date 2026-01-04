@@ -31,9 +31,12 @@ The following enhancements are planned for future releases:
 
 ### Core Functionality
 - **15 WNBA Teams**: Browse rosters for all 13 current teams (including 2025 expansion team Golden State Valkyries) plus 2 upcoming 2026 expansion teams (Portland Fire, Toronto Tempo)
+- **Team Logos**: Professional team logos displayed next to each team name on roster pages
+- **Team Season Statistics**: View comprehensive 2025 season stats for each team including PPG, RPG, APG, Win-Loss record, shooting percentages, and more
 - **Quick Roster Loading**: Fast initial load with optimized data fetching (~2-3 seconds)
 - **Player Photos**: High-quality headshots for all players
 - **Comprehensive Statistics**: 30+ statistical categories per player from official WNBA API
+- **Enhanced Bio Information**: Player details including height, weight, college, experience, birth date, and draft information
 
 ### Statistical Categories
 - **Basic Stats**: GP, W, L, W%, MPG, PPG, RPG, APG, SPG, BPG, TPG
@@ -43,6 +46,8 @@ The following enhancements are planned for future releases:
 - **Advanced Metrics**: +/-, Double-Doubles, Triple-Doubles, Fantasy Points
 
 ### User Experience Features
+- **Team Statistics Display**: Each team page prominently shows the "Big 3" stats (PPG, RPG, APG) in large orange numbers, followed by additional team stats (W-L record, shooting percentages, steals, blocks, turnovers, etc.) with interactive tooltips
+- **Team Logos**: Professional SVG/PNG team logos displayed alongside team names for visual identification
 - **Interactive Tooltips (Web App)**: Hover over any stat to see its definition instantly - no need to switch to the guide
 - **Basketball Stats Guide**: Built-in dictionary explaining all basketball statistics with definitions and descriptions
 - **On-Demand Details**: Player bio and advanced stats fetched only when needed for optimal performance
@@ -128,12 +133,13 @@ This will automatically open your browser to `http://localhost:8501` with the we
 
 1. **Select a Team**: Choose a team from the dropdown menu
 2. **Fetch Roster**: Click "Fetch Roster from Web" to load the team's current roster
-3. **View Basic Info**: See player photos, numbers, positions, and key stats
-4. **View Player Details**: Click on any player name to expand and view comprehensive bio and statistics
-5. **Fetch All Details**: Click "Fetch All Player Details" to load comprehensive stats for all players at once
-6. **Download Roster**: Click "Download Roster Data" to export the data to a JSON file
-7. **Stats Guide**: Click "Stats Guide" to view a comprehensive basketball statistics dictionary
-8. **Show All Stats**: For any player, click "Show All Stats" to see all 30+ statistical categories organized by type
+3. **View Team Stats**: See team logo, season statistics (PPG, RPG, APG), and complete team performance metrics
+4. **View Basic Info**: See player photos, numbers, positions, and key stats
+5. **View Player Details**: Click on any player name to expand and view comprehensive bio (height, weight, college, experience, draft info) and statistics
+6. **Fetch All Details**: Click "Fetch All Player Details" to load comprehensive stats for all players at once
+7. **Download Roster**: Click "Download Roster Data" to export the data to a JSON file
+8. **Stats Guide**: Click "Stats Guide" to view a comprehensive basketball statistics dictionary
+9. **Show All Stats**: For any player, click "Show All Stats" to see all 30+ statistical categories organized by type
 
 ### Interactive Tooltips (Web App Only)
 
@@ -162,6 +168,11 @@ WNBA_teams_information/
 ├── test_roster.py         # Unit tests
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
+├── logos/                # Team and WNBA logos (SVG/PNG)
+│   ├── WNBA_logo.svg.webp
+│   ├── Atlanta_Dream.svg
+│   ├── Chicago_Sky.svg
+│   └── ... (15 team logos)
 └── .gitignore            # Git ignore rules
 ```
 
@@ -169,13 +180,18 @@ WNBA_teams_information/
 
 ### Data Sources
 
+- **Team Season Statistics**: Official WNBA Stats API at `https://stats.wnba.com/stats/leaguedashteamstats`
+  - Provides comprehensive team-level statistics (W-L record, PPG, RPG, APG, shooting percentages, etc.)
+  - Updated for current 2025 season
 - **Team Rosters & Player Stats**: Official WNBA Stats API at `https://stats.wnba.com/stats/leaguedashplayerstats`
   - Provides 67 comprehensive statistical categories per player
   - Requires `LeagueID='10'` parameter for WNBA data
   - Includes per-game averages, shooting percentages, advanced metrics
 - **Player Bio Information**: Individual player pages at `https://www.wnba.com/player/{player-id}`
-  - Height, weight, college, experience, birth date, birth place
+  - Height, weight, college, experience, birth date, draft information
+  - Scrapes multiple `<dl>` tags for bio data (updated structure as of 2025)
 - **Player Photos**: WNBA CDN at `https://cdn.wnba.com/headshots/`
+- **Team Logos**: Local `logos/` directory with SVG and PNG files for all 15 teams
 
 ### API Integration
 
@@ -475,6 +491,38 @@ st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
 - Better information architecture
 - Easier navigation through comprehensive stats
 - Suitable for presentations and demonstrations
+
+### Recent Enhancements (January 2026)
+
+**Team Logos Integration:**
+- Added professional team logos for all 15 WNBA teams in `logos/` directory
+- Logos displayed next to team names on roster pages
+- Supports both SVG and PNG formats
+- Clean visual hierarchy with proper spacing
+
+**Team Season Statistics:**
+- Integrated WNBA Stats API team-level data
+- "Big 3" stats (PPG, RPG, APG) prominently displayed in large orange numbers (42px)
+- Additional team stats shown in compact format with tooltips:
+  - W-L record and win percentage
+  - Shooting percentages (FG%, 3P%, FT%)
+  - Defensive stats (SPG, BPG, TPG)
+  - Rebounding stats (OREB, DREB)
+  - Personal fouls
+- All team stats include interactive tooltips explaining each metric
+
+**Player Bio Information Fix:**
+- Fixed bio scraping to handle WNBA website structure changes
+- Updated to iterate through all `<dl>` tags instead of targeting specific classes
+- Corrected field mapping: "Experience" label (was incorrectly looking for "EXP")
+- Added Draft information field (e.g., "2018 Rnd 1 Pick 2")
+- Removed non-existent Birthplace field
+- Now successfully extracts: Height, Weight, College, Experience, Birth Date, Draft
+
+**Visual Improvements:**
+- Team stats use custom HTML with WNBA orange color (#FF6B35) for big 3 metrics
+- Responsive font sizing (42px for big stats, 18px for additional stats)
+- Clean separation between team overview and player roster
 
 ## License
 
