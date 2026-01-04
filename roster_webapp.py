@@ -8,6 +8,7 @@ import streamlit as st
 from roster_fetcher import WNBARosterFetcher
 from stats_guide import STATS_GUIDE, STATS_TIP, STAT_DEFINITIONS
 import requests
+import base64
 from PIL import Image
 from io import BytesIO
 import time
@@ -48,6 +49,10 @@ st.markdown("""
     .main {
         background-color: #F5F5F5;
     }
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 0rem;
+        margin-top: -3rem;
+    }
     .stButton>button {
         background-color: #FE5000;
         color: white;
@@ -59,6 +64,11 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #C8102E;
         color: white;
+    }
+    .stButton>button {
+        height: 50px;
+        white-space: normal;
+        line-height: 1.2;
     }
     h1 {
         color: #000000;
@@ -153,7 +163,6 @@ def display_player_row(player, index):
 
 def display_player_details(player):
     """Display full player details when selected"""
-    st.markdown("---")
     
     # Back button
     if st.button("← Back to Roster", use_container_width=False):
@@ -284,9 +293,9 @@ def display_player_details(player):
             # Bio Information
             st.markdown("#### Bio Information")
             bio_cols = st.columns(3)
-            bio_stats = ['height', 'weight', 'college', 'experience', 'birth_date', 'birth_place']
+            bio_stats = ['height', 'weight', 'college', 'experience', 'birth_date', 'draft']
             bio_labels = {'height': 'Height', 'weight': 'Weight', 'college': 'College',
-                         'experience': 'Experience', 'birth_date': 'Birth Date', 'birth_place': 'Birth Place'}
+                         'experience': 'Experience', 'birth_date': 'Birth Date', 'draft': 'Draft'}
             for idx, stat in enumerate(bio_stats):
                 if stat in all_stats:
                     with bio_cols[idx % 3]:
@@ -374,96 +383,93 @@ st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    st.header("Team Selection")
+    st.header("Navigation")
     
-    # Team dropdown
-    teams = st.session_state.fetcher.get_all_teams()
-    selected_team = st.selectbox(
-        "Choose a WNBA Team:",
-        teams,
-        index=teams.index("Indiana Fever") if "Indiana Fever" in teams else 0
-    )
-    
-    st.caption("*Portland Fire and Toronto Tempo are 2026 expansion teams")
-    
-    st.markdown("---")
-    
-    # Action buttons
-    if st.button("Fetch Roster from Web", use_container_width=True):
-        with st.spinner(f'Fetching roster for {selected_team}...'):
-            progress_bar = st.progress(0)
-            
-            progress_bar.progress(20)
-            roster_data = st.session_state.fetcher.fetch_team_roster(selected_team)
-            
-            progress_bar.progress(80)
-            st.session_state.current_roster = roster_data
-            
-            progress_bar.progress(100)
-            time.sleep(0.5)
-            progress_bar.empty()
-            
-        st.success(f"Roster loaded for {selected_team}!")
-        st.rerun()
-    
-    if st.session_state.current_roster:
-        # Download buttons
-        st.markdown('### Download Data')
+    # How to Use section
+    with st.expander("How to Use", expanded=False):
+        st.markdown("""
+        **Getting Started:**
+        1. Click any team button in the main area
+        2. View team stats and logo
+        3. Browse player roster and stats
+        4. Click player names for detailed info
         
+        **Features:**
+        - Team season statistics
+        - Player photos and bio
+        - 30+ stat categories per player
+        - Interactive tooltips (hover over stats)
+        - Download roster data as JSON
+        """)
+    
+    # Stats Guide button
+    if st.button("Basketball Stats Guide", use_container_width=True):
+        st.session_state.show_stats_guide = True
+    
+    # Current team info and actions
+    if st.session_state.current_roster:
+        st.markdown("### Current Team")
+        st.info(st.session_state.current_roster.get('team_name', 'No team selected'))
+        
+        # Back to Roster button (shown when viewing player details)
+        if st.session_state.selected_player_id:
+            if st.button("← Back to Roster", use_container_width=True, key="sidebar_back_to_roster"):
+                st.session_state.selected_player_id = None
+                st.rerun()
+        
+        # Download button
         roster_json = json.dumps(st.session_state.current_roster, indent=2, ensure_ascii=False)
         team_slug = st.session_state.current_roster.get('team_slug', 'roster')
         
         st.download_button(
-            label='Download Roster Data (JSON)',
+            label='Download Roster (JSON)',
             data=roster_json,
             file_name=f'{team_slug}_roster.json',
             mime='application/json',
             use_container_width=True
         )
-    
-    if st.button("Fetch All Player Details", use_container_width=True):
-        if st.session_state.current_roster:
-            players = st.session_state.current_roster.get('players', [])
-            to_fetch = [p for p in players if not p.get('details_fetched', False)]
-            
-            if to_fetch:
+        
+        # Fetch all details button
+        players = st.session_state.current_roster.get('players', [])
+        to_fetch = [p for p in players if not p.get('details_fetched', False)]
+        
+        if to_fetch:
+            if st.button(f"Fetch All Player Details ({len(to_fetch)})", use_container_width=True):
                 team_name = st.session_state.current_roster.get('team_name', '')
-                
-                with st.spinner(f"Fetching comprehensive stats for {len(to_fetch)} players..."):
-                    # Use the new API-based method
-                    st.session_state.fetcher.fetch_all_player_details(to_fetch, team_name)
+                with st.spinner(f'Fetching details for {len(to_fetch)} players...'):
+                    progress_bar = st.progress(0)
                     
-                st.success(f"Fetched comprehensive stats for {len(to_fetch)} players!")
+                    # Get API stats for all players
+                    api_stats = st.session_state.fetcher.fetch_team_stats_from_api(team_name)
+                    
+                    for idx, player in enumerate(to_fetch):
+                        player_api_stats = api_stats.get(player['name'])
+                        details = st.session_state.fetcher.fetch_single_player_details(
+                            player['id'],
+                            player['name'],
+                            player_api_stats
+                        )
+                        player.update(details)
+                        player['details_fetched'] = True
+                        progress_bar.progress((idx + 1) / len(to_fetch))
+                    
+                    progress_bar.empty()
+                
+                st.success(f"Fetched details for {len(to_fetch)} players!")
                 st.rerun()
-            else:
-                st.info("All player details already loaded!")
-        else:
-            st.warning("Please load a roster first!")
-    
-    if st.button("Clear Display", use_container_width=True):
-        st.session_state.current_roster = None
-        st.session_state.expanded_players.clear()
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Stats Guide button
-    if st.button("Stats Guide", use_container_width=True, type="secondary"):
-        st.session_state.show_stats_guide = not st.session_state.get('show_stats_guide', False)
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Saved rosters info
-    saved_teams = st.session_state.fetcher.get_all_saved_rosters()
-    st.info(f"Saved rosters: {len(saved_teams)} teams")
+        
+        # Back to main page button
+        if st.button("← Back to Main Page", use_container_width=True):
+            st.session_state.current_roster = None
+            st.session_state.selected_player_id = None
+            st.rerun()
 
 # Main content area
 if st.session_state.get('show_stats_guide', False):
     # Display Stats Guide
     st.title("Basketball Statistics Guide")
     
-    if st.button("Close Guide"):
+    if st.button("← Back to Teams"):
         st.session_state.show_stats_guide = False
         st.rerun()
     
@@ -611,17 +617,6 @@ elif st.session_state.current_roster:
             players = roster_data.get('players', [])
             fetched_time = roster_data.get('fetched_at', '')[:19].replace('T', ' ')
             
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Players", len(players))
-            with col2:
-                st.metric("Last Updated", fetched_time)
-            with col3:
-                details_loaded = sum(1 for p in players if p.get('details_fetched', False))
-                st.metric("Details Loaded", f"{details_loaded}/{len(players)}")
-            
-            st.markdown("---")
-            
             # Display players
             if players:
                 st.subheader("Team Roster")
@@ -666,42 +661,77 @@ elif st.session_state.current_roster:
                 # Display each player row - lightning fast!
                 for idx, player in enumerate(sorted_players):
                     display_player_row(player, idx)
+                
+                # Roster info at bottom
+                st.markdown("---")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Players", len(players))
+                with col2:
+                    st.metric("Last Updated", fetched_time)
+                with col3:
+                    details_loaded = sum(1 for p in players if p.get('details_fetched', False))
+                    st.metric("Details Loaded", f"{details_loaded}/{len(players)}")
             else:
                 st.info("No players found in roster")
 
 else:
-    # Welcome screen
-    st.info("Select a team from the sidebar and click 'Fetch Roster from Web' to get started!")
+    # Team selection screen with buttons
+    st.subheader("Select a Team")
+    st.caption("*Portland Fire and Toronto Tempo are 2026 expansion teams")
     
-    # Show some stats
-    st.subheader("Quick Stats")
-    col1, col2 = st.columns(2)
+    # Get all teams
+    teams = st.session_state.fetcher.get_all_teams()
     
-    with col1:
-        st.metric("Total WNBA Teams", len(st.session_state.fetcher.get_all_teams()))
+    # Split teams into current and expansion
+    current_teams = [t for t in teams if t not in ['Portland Fire', 'Toronto Tempo']]
+    expansion_teams = [t for t in teams if t in ['Portland Fire', 'Toronto Tempo']]
     
-    with col2:
-        saved_count = len(st.session_state.fetcher.get_all_saved_rosters())
-        st.metric("Saved Rosters", saved_count)
+    # Display current teams in grid (5 columns)
+    st.markdown("### Current Teams (2025)")
+    for i in range(0, len(current_teams), 5):
+        cols = st.columns(5)
+        for j, col in enumerate(cols):
+            if i + j < len(current_teams):
+                team = current_teams[i + j]
+                with col:
+                    # Create button with team logo (fixed height container for alignment)
+                    logo_path = TEAM_LOGOS.get(team)
+                    if logo_path and os.path.exists(logo_path):
+                        # Use HTML img tag in fixed-height container for proper alignment
+                        mime_type = "image/png" if logo_path.endswith('.png') else "image/svg+xml"
+                        st.markdown(f'''<div style="height: 120px; display: flex; align-items: center; justify-content: center;">
+                            <img src="data:{mime_type};base64,{base64.b64encode(open(logo_path, 'rb').read()).decode()}" style="max-height: 100%; max-width: 100%; object-fit: contain;" />
+                        </div>''', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div style="height: 120px;"></div>', unsafe_allow_html=True)
+                    
+                    if st.button(team, use_container_width=True, key=f"btn_{team}"):
+                        with st.spinner(f'Loading {team}...'):
+                            roster_data = st.session_state.fetcher.fetch_team_roster(team)
+                            st.session_state.current_roster = roster_data
+                        st.rerun()
     
-    # Instructions
-    st.markdown("---")
-    st.markdown("""
-    ### How to Use
-    
-    1. **Select a team** from the dropdown in the sidebar
-    2. **Fetch roster** from the web or load a saved one
-    3. **Click on player cards** to expand and view detailed statistics
-    4. **Use "Fetch All Details"** to load bio and advanced stats for all players at once
-    
-    ### Features
-    
-    - Browse all 15 WNBA teams (including 2026 expansion)
-    - High-quality player photos
-    - Comprehensive statistics (PPG, RPG, APG, FG%, 3P%, etc.)
-    - Save and load roster data
-    - Real-time data from official WNBA websites
-    """)
+    # Display expansion teams
+    st.markdown("### 2026 Expansion Teams")
+    cols = st.columns(5)
+    for i, team in enumerate(expansion_teams):
+        with cols[i]:
+            logo_path = TEAM_LOGOS.get(team)
+            if logo_path and os.path.exists(logo_path):
+                # Use HTML img tag in fixed-height container for proper alignment
+                mime_type = "image/png" if logo_path.endswith('.png') else "image/svg+xml"
+                st.markdown(f'''<div style="height: 120px; display: flex; align-items: center; justify-content: center;">
+                    <img src="data:{mime_type};base64,{base64.b64encode(open(logo_path, 'rb').read()).decode()}" style="max-height: 100%; max-width: 100%; object-fit: contain;" />
+                </div>''', unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="height: 120px;"></div>', unsafe_allow_html=True)
+            
+            if st.button(team, use_container_width=True, key=f"btn_{team}"):
+                with st.spinner(f'Loading {team}...'):
+                    roster_data = st.session_state.fetcher.fetch_team_roster(team)
+                    st.session_state.current_roster = roster_data
+                st.rerun()
 
 # Footer
 st.markdown("---")

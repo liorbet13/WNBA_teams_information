@@ -525,6 +525,8 @@ class WNBARosterFetcher:
             details['gp'] = str(api_stats.get('GP', ''))
             details['w'] = str(api_stats.get('W', ''))
             details['l'] = str(api_stats.get('L', ''))
+            w_pct = api_stats.get('W_PCT', '')
+            details['w_pct'] = f"{w_pct:.3f}" if isinstance(w_pct, float) else str(w_pct)
             details['mpg'] = str(api_stats.get('MIN', ''))
             
             # Shooting stats
@@ -547,9 +549,11 @@ class WNBARosterFetcher:
             details['oreb'] = str(api_stats.get('OREB', ''))
             details['dreb'] = str(api_stats.get('DREB', ''))
             details['bpg'] = str(api_stats.get('BLK', ''))
+            details['blka'] = str(api_stats.get('BLKA', ''))
             details['spg'] = str(api_stats.get('STL', ''))
             details['tpg'] = str(api_stats.get('TOV', ''))
             details['pf'] = str(api_stats.get('PF', ''))
+            details['pfd'] = str(api_stats.get('PFD', ''))
             details['plus_minus'] = str(api_stats.get('PLUS_MINUS', ''))
             
             # Advanced stats

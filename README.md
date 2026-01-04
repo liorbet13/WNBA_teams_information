@@ -121,15 +121,27 @@ streamlit run roster_webapp.py
 
 This will automatically open your browser to `http://localhost:8501` with the web app.
 
-**Why use the web version?**
-- Modern, responsive design
-- Smoother performance and interactions
-- Works on any device with a browser
-- Better visual appeal with WNBA branding
-- Built-in progress indicators
-- Enhanced data visualization
-
 ### Using the Application
+
+#### Web Application (Streamlit) - Recommended
+
+1. **Select a Team**: Click any team button from the main team selection grid (displayed in 5 columns with team logos)
+2. **View Team Information**: 
+   - Team logo and name at the top
+   - 2025 season statistics prominently displayed:
+     - "Big 3" stats (PPG, RPG, APG) in large orange numbers
+     - Additional team stats (W-L, shooting %, defense, rebounds) with tooltips
+3. **Browse Roster**: View all players with their numbers, positions, and key stats (PPG, RPG, APG)
+4. **Sort Players**: Use the dropdown to sort by Number, Name, Position, PPG, RPG, or APG
+5. **View Player Details**: Click on any player name to see:
+   - Player photo and bio (height, weight, college, experience, birth date, draft info)
+   - Comprehensive statistics organized by category (30+ stats)
+6. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
+7. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
+8. **Navigate Back**: Use "← Back to Roster" or "← Back to Main Page" buttons to navigate
+9. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
+
+#### Desktop Application (Tkinter)
 
 1. **Select a Team**: Choose a team from the dropdown menu
 2. **Fetch Roster**: Click "Fetch Roster from Web" to load the team's current roster
@@ -494,11 +506,19 @@ st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
 
 ### Recent Enhancements (January 2026)
 
+**UI Redesign - Visual Team Selection:**
+- Replaced dropdown menu with visual team button grid (5 columns)
+- Team logos displayed above each team button for instant recognition
+- Clean, modern layout with all 15 teams visible at once
+- Separate sections for current teams (2025) and expansion teams (2026)
+- Clicking any team button instantly loads the roster
+
 **Team Logos Integration:**
 - Added professional team logos for all 15 WNBA teams in `logos/` directory
-- Logos displayed next to team names on roster pages
-- Supports both SVG and PNG formats
-- Clean visual hierarchy with proper spacing
+- Logos displayed on both team selection screen and roster pages
+- Supports both SVG and PNG formats with proper MIME type detection
+- Fixed-height containers (120px) ensure perfect button alignment across all teams
+- HTML/CSS implementation with base64 encoding for reliable display
 
 **Team Season Statistics:**
 - Integrated WNBA Stats API team-level data
@@ -511,6 +531,14 @@ st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
   - Personal fouls
 - All team stats include interactive tooltips explaining each metric
 
+**Enhanced Player Statistics:**
+- Added missing stat fields to player advanced details:
+  - Win Percentage (w_pct) - formatted to 3 decimal places
+  - Blocked Attempts (blka)
+  - Fouls Drawn (pfd)
+- Draft information now included in advanced details section
+- Total of 37 fields displayed across 6 organized categories
+
 **Player Bio Information Fix:**
 - Fixed bio scraping to handle WNBA website structure changes
 - Updated to iterate through all `<dl>` tags instead of targeting specific classes
@@ -519,10 +547,20 @@ st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
 - Removed non-existent Birthplace field
 - Now successfully extracts: Height, Weight, College, Experience, Birth Date, Draft
 
-**Visual Improvements:**
-- Team stats use custom HTML with WNBA orange color (#FF6B35) for big 3 metrics
-- Responsive font sizing (42px for big stats, 18px for additional stats)
-- Clean separation between team overview and player roster
+**Navigation & UX Improvements:**
+- Reorganized sidebar with collapsible "How to Use" section
+- "← Back to Main Page" button replaces "Clear Display" for better clarity
+- "← Back to Roster" button appears in sidebar when viewing player details
+- Removed unnecessary spacing and dividers from sidebar for cleaner look
+- Reduced top padding in sidebar (Navigation header positioned closer to top)
+- Moved roster info metrics (Total Players, Last Updated, Details Loaded) to bottom of roster page
+- Custom button styling: 50px height with text wrapping for longer team names
+
+**Visual Polish:**
+- Fixed horizontal line spacing issues (removed duplicate dividers)
+- Consistent button heights prevent misalignment with long team names
+- WNBA orange (#FE5000) buttons with red (#C8102E) hover effect
+- Clean, professional spacing throughout the interface
 
 ## License
 
