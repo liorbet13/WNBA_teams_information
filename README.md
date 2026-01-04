@@ -111,7 +111,7 @@ Simply run the GUI application:
 python roster_gui.py
 ```
 
-### Running the Web Application (Streamlit) ⭐ NEW!
+### Running the Web Application (Streamlit)
 
 For a modern web-based interface that runs in your browser:
 
@@ -122,12 +122,12 @@ streamlit run roster_webapp.py
 This will automatically open your browser to `http://localhost:8501` with the web app.
 
 **Why use the web version?**
-- ✨ Modern, responsive design
-- 🚀 Smoother performance and interactions
-- 📱 Works on any device with a browser
-- 🎨 Better visual appeal with WNBA branding
-- 🔄 Built-in progress indicators
-- 📊 Enhanced data visualization
+- Modern, responsive design
+- Smoother performance and interactions
+- Works on any device with a browser
+- Better visual appeal with WNBA branding
+- Built-in progress indicators
+- Enhanced data visualization
 
 ### Using the Application
 
@@ -471,10 +471,10 @@ st.metric("PPG", player.get('ppg', '--'), help=get_stat_help('ppg'))
 **Changes Implemented:**
 
 1. **Emoji Removal**: Removed all emojis from both applications for a clean, professional appearance
-   - Changed headers from "📋 Team Roster" to "Team Roster"
+   - Changed headers from "Team Roster" (previously with emoji) to plain text
    - Updated buttons, messages, and labels across 30+ locations
-   - Photo placeholders changed from "📷" to "[No Photo]"
-   - Indicators changed from "✓ Details" to "[Details]"
+   - Photo placeholders changed to "[No Photo]"
+   - Indicators changed to "[Details]"
 
 2. **Section Cleanup**: Removed redundant "Player & Team Info" section that duplicated data already shown elsewhere
 
