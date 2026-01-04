@@ -4,6 +4,21 @@ A Python application for viewing WNBA team rosters with comprehensive player sta
 
 **This app is a work-in-progress and will continue to be improved**
 
+## Motivation
+
+The official WNBA website, while comprehensive, presents a significant usability challenge for fans and analysts trying to access player statistics. Navigating to a specific player's stats requires clicking through **multiple webpages**, making quick comparisons and stat lookups frustratingly time-consuming.
+
+This application solves that problem by providing:
+- **Single-page access** to all player information - no endless clicking through menus
+- **One simple filter** - just select the team you want to view
+- **Instant stats** - comprehensive player data loads in seconds, not minutes
+- **User-friendly interface** - clean, organized presentation of 30+ statistical categories
+- **Quick comparisons** - view entire team rosters side-by-side with all key stats
+
+Whether you're a casual fan checking your favorite player's performance, a fantasy basketball enthusiast comparing options, or an analyst gathering data, this app streamlines what should be a simple task into an actually simple experience.
+
+*Note: All data is sourced directly from the official WNBA website and stats API, ensuring accuracy and up-to-date information.*
+
 ## Future Improvements
 
 The following enhancements are planned for future releases:
