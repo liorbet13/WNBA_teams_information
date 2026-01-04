@@ -363,6 +363,97 @@ class WNBARosterFetcher:
         }
         return abbr_map.get(team_name, '')
     
+    def fetch_team_season_stats(self, team_name):
+        """
+        Fetch team-level statistics from stats.wnba.com API
+        
+        Args:
+            team_name (str): Name of the team
+            
+        Returns:
+            dict: Team statistics (PPG, RPG, APG, etc.) or None if not available
+        """
+        if team_name not in self.TEAMS:
+            return None
+        
+        try:
+            time.sleep(0.3)  # Be respectful to the API
+            
+            url = "https://stats.wnba.com/stats/leaguedashteamstats"
+            params = {
+                'LeagueID': '10',
+                'Season': '2025',
+                'SeasonType': 'Regular Season',
+                'MeasureType': 'Base',
+                'PerMode': 'PerGame',
+                'PlusMinus': 'N',
+                'PaceAdjust': 'N',
+                'Rank': 'N',
+                'Outcome': '',
+                'Location': '',
+                'Month': '0',
+                'SeasonSegment': '',
+                'DateFrom': '',
+                'DateTo': '',
+                'OpponentTeamID': '0',
+                'VsConference': '',
+                'VsDivision': '',
+                'GameSegment': '',
+                'Period': '0',
+                'LastNGames': '0'
+            }
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://stats.wnba.com/',
+                'Origin': 'https://stats.wnba.com'
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'resultSets' not in data or len(data['resultSets']) == 0:
+                return None
+            
+            headers_list = data['resultSets'][0]['headers']
+            rows = data['resultSets'][0]['rowSet']
+            
+            # Find the team's stats
+            for row in rows:
+                team_data = dict(zip(headers_list, row))
+                if team_data.get('TEAM_NAME') == team_name:
+                    return {
+                        'gp': team_data.get('GP', 0),
+                        'w': team_data.get('W', 0),
+                        'l': team_data.get('L', 0),
+                        'w_pct': team_data.get('W_PCT', 0),
+                        'ppg': team_data.get('PTS', 0),
+                        'rpg': team_data.get('REB', 0),
+                        'apg': team_data.get('AST', 0),
+                        'fgm': team_data.get('FGM', 0),
+                        'fga': team_data.get('FGA', 0),
+                        'fgp': team_data.get('FG_PCT', 0),
+                        '3pm': team_data.get('FG3M', 0),
+                        '3pa': team_data.get('FG3A', 0),
+                        '3pp': team_data.get('FG3_PCT', 0),
+                        'ftm': team_data.get('FTM', 0),
+                        'fta': team_data.get('FTA', 0),
+                        'ftp': team_data.get('FT_PCT', 0),
+                        'oreb': team_data.get('OREB', 0),
+                        'dreb': team_data.get('DREB', 0),
+                        'spg': team_data.get('STL', 0),
+                        'bpg': team_data.get('BLK', 0),
+                        'tpg': team_data.get('TOV', 0),
+                        'pf': team_data.get('PF', 0)
+                    }
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error fetching team stats for {team_name}: {e}")
+            return None
+    
     def fetch_single_player_details(self, player_id, player_name='', api_stats=None):
         """
         Fetch detailed information for a single player
@@ -401,9 +492,11 @@ class WNBARosterFetcher:
             player_response.raise_for_status()
             player_soup = BeautifulSoup(player_response.content, 'html.parser')
             
-            # Find the bio dl element with player details
-            bio_dl = player_soup.find('dl', class_=lambda x: x and 'PlayerProfileInfoSecondary' in str(x))
-            if bio_dl:
+            # The WNBA website now has bio info in separate <dl> tags (changed structure)
+            # Find all dl tags and extract bio information
+            all_dls = player_soup.find_all('dl')
+            
+            for bio_dl in all_dls:
                 dts = bio_dl.find_all('dt')
                 dds = bio_dl.find_all('dd')
                 
@@ -414,15 +507,15 @@ class WNBARosterFetcher:
                     if label == 'Height':
                         details['height'] = value
                     elif label == 'Weight':
-                        details['weight'] = value
-                    elif label == 'College/Country':
+                        details['weight'] = value.replace('lbs', '').strip()
+                    elif label == 'College / Country' or label == 'College/Country':
                         details['college'] = value.split('/')[0].strip()
-                    elif label == 'EXP':
+                    elif label == 'Experience':
                         details['experience'] = value.strip()
                     elif label == 'Birthdate':
                         details['birth_date'] = value.strip()
-                    elif label == 'Birthplace':
-                        details['birth_place'] = value.strip()
+                    elif label == 'Draft':
+                        details['draft'] = value.strip()
                         
         except Exception as e:
             print(f"Could not fetch bio for player {player_id}: {e}")

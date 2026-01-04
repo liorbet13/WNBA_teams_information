@@ -12,6 +12,27 @@ from PIL import Image
 from io import BytesIO
 import time
 import json
+import os
+
+
+# Team logo mapping
+TEAM_LOGOS = {
+    'Atlanta Dream': 'logos/Atlanta_Dream.svg',
+    'Chicago Sky': 'logos/Chicago_Sky.svg',
+    'Connecticut Sun': 'logos/Conneticut_Sun.svg',
+    'Dallas Wings': 'logos/Dallas_Wings.svg',
+    'Golden State Valkyries': 'logos/GS_Valkyries.svg',
+    'Indiana Fever': 'logos/Indiana_Fever.svg',
+    'Las Vegas Aces': 'logos/LV_Aces.svg',
+    'Los Angeles Sparks': 'logos/LA_Sparks.svg',
+    'Minnesota Lynx': 'logos/Minnesota_Lynx.svg',
+    'New York Liberty': 'logos/NY_Liberty.svg',
+    'Phoenix Mercury': 'logos/Phoenix_Mercury.svg',
+    'Portland Fire': 'logos/Portland_Fireo.svg.png',
+    'Seattle Storm': 'logos/Seattle_Storm.svg',
+    'Toronto Tempo': 'logos/Toronto-Tempo.png',
+    'Washington Mystics': 'logos/Washington_Mystics.svg'
+}
 
 
 # Page configuration
@@ -193,7 +214,7 @@ def display_player_details(player):
             ('College', player.get('college', '--')),
             ('Experience', player.get('experience', '--')),
             ('Birth Date', player.get('birth_date', '--')),
-            ('Birth Place', player.get('birth_place', '--')),
+            ('Draft', player.get('draft', '--')),
         ]
         
         for label, value in bio_data:
@@ -336,7 +357,7 @@ logo_col, title_col = st.columns([1, 4])
 
 with logo_col:
     try:
-        logo_img = Image.open("WNBA_logo.svg.webp")
+        logo_img = Image.open("logos/WNBA_logo.svg.webp")
         # Maintain aspect ratio - resize based on height
         aspect_ratio = logo_img.width / logo_img.height
         new_height = 80
@@ -488,8 +509,32 @@ elif st.session_state.current_roster:
             st.session_state.selected_player_id = None
     else:
         # Show roster list view
-        # Team header
-        st.header(f"{roster_data['team_name']}")
+        # Team header with logo
+        team_name = roster_data['team_name']
+        
+        logo_col, name_col = st.columns([1, 8], gap="small")
+        
+        with logo_col:
+            # Display team logo if available
+            logo_path = TEAM_LOGOS.get(team_name)
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    # SVG files can be displayed directly by Streamlit
+                    if logo_path.endswith('.svg'):
+                        st.image(logo_path, width=80)
+                    else:
+                        # PNG files need to be resized with PIL
+                        logo_img = Image.open(logo_path)
+                        aspect_ratio = logo_img.width / logo_img.height
+                        new_height = 80
+                        new_width = int(new_height * aspect_ratio)
+                        logo_img = logo_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        st.image(logo_img, width=new_width)
+                except:
+                    pass
+        
+        with name_col:
+            st.header(team_name)
         
         # Status check
         if roster_data['status'] == 'expansion_2026':
@@ -497,6 +542,71 @@ elif st.session_state.current_roster:
         elif roster_data['status'] == 'error':
             st.error(f"Error: {roster_data.get('error', 'Unknown error occurred')}")
         else:
+            # Fetch and display team stats
+            with st.spinner("Loading team stats..."):
+                team_stats = st.session_state.fetcher.fetch_team_season_stats(team_name)
+            
+            if team_stats:
+                st.markdown("### 2025 Season Stats")
+                
+                # Big 3 stats displayed prominently with custom HTML for larger font
+                big3_html = f"""
+                <div style="display: flex; justify-content: space-around; margin: 20px 0;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #666;">Points Per Game</div>
+                        <div style="font-size: 42px; font-weight: bold; color: #FF6B35;">{team_stats['ppg']:.1f}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #666;">Rebounds Per Game</div>
+                        <div style="font-size: 42px; font-weight: bold; color: #FF6B35;">{team_stats['rpg']:.1f}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 14px; color: #666;">Assists Per Game</div>
+                        <div style="font-size: 42px; font-weight: bold; color: #FF6B35;">{team_stats['apg']:.1f}</div>
+                    </div>
+                </div>
+                """
+                st.markdown(big3_html, unsafe_allow_html=True)
+                
+                # Additional stats with tooltips (smaller font)
+                st.markdown("""
+                    <style>
+                    [data-testid="stMetricValue"] {
+                        font-size: 18px !important;
+                    }
+                    [data-testid="stMetricLabel"] {
+                        font-size: 12px !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                stat_cols = st.columns(11)
+                
+                with stat_cols[0]:
+                    st.metric("W-L", f"{team_stats['w']}-{team_stats['l']}", help="Wins-Losses")
+                with stat_cols[1]:
+                    st.metric("Win %", f"{team_stats['w_pct']:.3f}", help="Win Percentage")
+                with stat_cols[2]:
+                    st.metric("FG%", f"{team_stats['fgp']:.1%}", help=get_stat_help('fgp'))
+                with stat_cols[3]:
+                    st.metric("3P%", f"{team_stats['3pp']:.1%}", help=get_stat_help('3pp'))
+                with stat_cols[4]:
+                    st.metric("FT%", f"{team_stats['ftp']:.1%}", help=get_stat_help('ftp'))
+                with stat_cols[5]:
+                    st.metric("SPG", f"{team_stats['spg']:.1f}", help=get_stat_help('spg'))
+                with stat_cols[6]:
+                    st.metric("BPG", f"{team_stats['bpg']:.1f}", help=get_stat_help('bpg'))
+                with stat_cols[7]:
+                    st.metric("TPG", f"{team_stats['tpg']:.1f}", help=get_stat_help('tpg'))
+                with stat_cols[8]:
+                    st.metric("OREB", f"{team_stats['oreb']:.1f}", help=get_stat_help('oreb'))
+                with stat_cols[9]:
+                    st.metric("DREB", f"{team_stats['dreb']:.1f}", help=get_stat_help('dreb'))
+                with stat_cols[10]:
+                    st.metric("PF", f"{team_stats['pf']:.1f}", help=get_stat_help('pf'))
+                
+                st.markdown("---")
+            
             # Display roster info
             players = roster_data.get('players', [])
             fetched_time = roster_data.get('fetched_at', '')[:19].replace('T', ' ')

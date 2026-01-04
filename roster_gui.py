@@ -748,7 +748,7 @@ class RosterViewerGUI:
                     ('College:', player.get('college', '--')),
                     ('Experience:', player.get('experience', '--')),
                     ('Birth Date:', player.get('birth_date', '--')),
-                    ('Birth Place:', player.get('birth_place', '--')),
+                    ('Draft:', player.get('draft', '--')),
                 ]
                 
                 for idx, (label, value) in enumerate(bio_data):
@@ -873,7 +873,7 @@ class RosterViewerGUI:
         exclude_fields = {'id', 'name', 'number', 'position', 'image_url', 'details_fetched'}
         
         # Categorize stats (including all available stats)
-        bio_fields = {'height', 'weight', 'college', 'experience', 'birth_date', 'birth_place'}
+        bio_fields = {'height', 'weight', 'college', 'experience', 'birth_date', 'draft'}
         game_stats = {'gp', 'w', 'l', 'w_pct', 'mpg'}
         scoring_stats = {'ppg', 'fgm', 'fga', 'fgp', '3pm', '3pa', '3pp', 'ftm', 'fta', 'ftp'}
         rebound_stats = {'rpg', 'oreb', 'dreb'}
@@ -918,7 +918,7 @@ class RosterViewerGUI:
         # Bio Information
         bio_labels = {
             'height': 'Height', 'weight': 'Weight', 'college': 'College',
-            'experience': 'Experience', 'birth_date': 'Birth Date', 'birth_place': 'Birth Place'
+            'experience': 'Experience', 'birth_date': 'Birth Date', 'draft': 'Draft'
         }
         create_stat_section("Bio Information", bio_fields, bio_labels)
         
