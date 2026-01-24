@@ -4,6 +4,157 @@ This document tracks all enhancements, bug fixes, and technical implementation d
 
 ## Recent Enhancements (January 2026)
 
+### Schedule UI Improvements & Next Game Feature (January 24, 2026)
+
+**Enhancement - Schedule Navigation & Upcoming Game Display**
+
+Improved schedule viewing experience and added next game display to team stats.
+
+#### View Schedule Button Repositioned (Web App)
+- **Previous Location**: Bottom of roster page (below player table)
+- **New Location**: Sidebar, positioned under team name and above "Download Roster (JSON)"
+- **Benefit**: More accessible, consistent with sidebar navigation pattern
+- **Conditional Display**: Button hides when viewing schedule (replaced by "Back to Roster" button)
+
+#### Schedule Navigation Enhancement
+- **Web App**: Added "Back to Roster" button in sidebar when viewing schedule
+  - Uses same pattern as player details view
+  - Button replaces "View Team Schedule" when schedule is active
+  - Smooth navigation between roster and schedule views
+- **Desktop App**: Schedule view already had "Back to Roster" in sidebar (no change needed)
+
+#### Next Game Display
+- **New Method**: `fetch_next_game()` in `roster_fetcher.py`
+  - Fetches the next upcoming game for a team from WNBA API
+  - Compares game datetime with current time to find next game
+  - Returns single game dictionary or None if no upcoming games
+- **Display Location**: Prominent info box above team stats section
+  - Web App: Blue info box with game details
+  - Desktop App: Light blue frame with game details
+- **Format**: "Next Game: vs/@ [Opponent] - [Date] at [Time]"
+  - Example: "Next Game: @ Portland Fire - Saturday May 09, 2026 at 09:00 PM ET"
+- **Expansion Team Support**: Works for all teams including 2026 expansion teams (Portland Fire, Toronto Tempo)
+  - Displays next game even when roster/stats not available
+  - Web App: Shows next game before expansion team warning
+  - Desktop App: Changed expansion handling to show next game instead of just returning to team selection
+
+#### UI Polish
+- **Removed Emoji**: Removed calendar emoji (📅) from "View Team Schedule" button for cleaner appearance
+- **Home/Away Format**: Changed from emojis (🏠/✈️) to text ("Home vs"/"Away @") in schedule display
+  - More professional appearance
+  - Better accessibility (screen readers)
+  - Consistent with "Next Game" format
+
+#### Technical Implementation
+- **Time Comparison**: Uses `datetime.now(timezone.utc)` to find upcoming games
+- **Error Handling**: Try-except blocks prevent display issues if fetch fails
+- **Session State** (Web App): Tracks schedule view with `show_schedule` flag
+- **View Mode** (Desktop App): Tracks schedule with existing `view_mode` state variable
+
+### Team Schedule API Fix (January 24, 2026)
+
+**Bug Fix - Schedule Data Source & Time Display**
+
+Fixed schedule fetching to use official WNBA API instead of web scraping, resolving the issue where schedules were not displaying. Also fixed time display bug where all games showed 12:00 AM ET.
+
+#### Issue Identified
+- **Original Implementation**: Used BeautifulSoup to scrape WNBA.com schedule page
+- **Problem**: WNBA schedule page is JavaScript-rendered (Next.js/React), so HTML scraping returned no data
+- **Symptoms**: `fetch_team_schedule()` returned empty list (0 games) for all teams
+
+#### Solution Implemented
+- **API Discovery**: Found official WNBA schedule API at `https://cdn.wnba.com/static/json/staticData/scheduleLeagueV2.json`
+- **Data Structure**: JSON endpoint returns complete 2026 season schedule (331 games across 112 dates)
+- **Team Matching**: Uses team city + name comparison instead of abbreviations for reliability
+- **Date Formatting**: Converts ISO 8601 timestamps to human-readable format (e.g., "Saturday May 09, 2026")
+- **Time Conversion**: Formats game times in 12-hour format with ET timezone
+
+#### Updated Implementation
+```python
+# Old: Web scraping (didn't work - JS-rendered page)
+soup = BeautifulSoup(response.text, 'html.parser')
+game_links = soup.find_all('a', href=lambda x: x and '/game/' in x)
+
+# New: API consumption (works reliably)
+response = requests.get('https://cdn.wnba.com/static/json/staticData/scheduleLeagueV2.json')
+data = response.json()
+game_dates = data['leagueSchedule']['gameDates']
+```
+
+#### Time Display Bug Fix
+- **Issue**: All game times displaying as "12:00 AM ET" regardless of actual game time
+- **Root Cause**: Code was using `gameDateEst` field which only contains date (with 00:00:00 default time)
+- **Solution**: Changed to use `gameDateTimeEst` field which contains full datetime with actual game time
+- **Result**: Times now display correctly (e.g., "01:00 PM ET", "09:00 PM ET")
+- **Code Change**: `game_datetime_str = game.get('gameDateTimeEst', '')` instead of `gameDateEst`
+
+#### Additional Improvements
+- **Arena Information**: Now includes venue name for each game
+- **Game ID**: Includes unique game identifier for potential future features
+- **Better Error Handling**: More robust exception handling with detailed error messages
+- **Full Season Coverage**: Returns all 44 regular season games per team (2026 schedule)
+- **Display Format**: Changed from emoji indicators to text ("Home vs"/"Away @") for better accessibility
+
+#### Test Results
+- Chicago Sky: 44 games successfully retrieved
+- Includes home and away games
+- Proper opponent names (full team names like "Portland Fire" instead of abbreviations)
+- Accurate dates and times in ET timezone
+- Game type correctly identified (Regular Season, Commissioner's Cup)
+
+### Team Schedule Viewing Feature (January 24, 2026)
+
+**New Feature - View Full Team Schedule**
+
+Added comprehensive schedule viewing capability to both desktop and web applications, allowing users to see all 2026 season games for any team.
+
+#### Schedule Integration
+- **Schedule Fetching**: New `fetch_team_schedule()` method in `roster_fetcher.py`
+  - Uses official WNBA CDN API (`https://cdn.wnba.com/static/json/staticData/scheduleLeagueV2.json`)
+  - Parses JSON data for 2026 season (331 total games)
+  - Filters games by team name matching (city + team name)
+  - Extracts date, opponent, home/away status, time, arena, and game type
+  - Returns structured list of game dictionaries (~44 games per team)
+- **Team Matching**: Intelligent matching using full team names (e.g., "New York Liberty")
+- **Game Type Detection**: Distinguishes between Regular Season, Commissioner's Cup, and Playoffs
+- **Date Formatting**: Converts ISO timestamps to readable format (e.g., "Saturday May 09, 2026")
+
+#### Web Application (Streamlit)
+- **View Schedule Button**: Prominent button on roster page (📅 View Team Schedule)
+- **Schedule View**: Clean table-style display with:
+  - Date in bold
+  - Home (🏠 vs) or Away (✈️ @) indicator with opponent
+  - Game time in italics
+  - Game type (Regular Season / Commissioner's Cup)
+  - Alternating row colors for readability
+- **Navigation**: "Back to Roster" button to return to roster view
+- **Session State**: Tracks schedule view mode separately from player details
+
+#### Desktop Application (Tkinter)
+- **View Schedule Button**: Added to sidebar navigation when viewing roster
+- **Schedule View**: Scrollable game list with:
+  - Team logo and header
+  - Game count display
+  - Date, opponent, home/away, time, and game type columns
+  - Alternating row backgrounds (#F5F5F5 and white)
+  - Mouse wheel scrolling support
+- **View Mode Tracking**: New `view_mode` state variable ('team_selection', 'roster', 'schedule', 'player')
+- **Sidebar Updates**: Context-aware "Back to Roster" button appears in schedule view
+
+#### Technical Implementation
+- **API Consumption**: Uses official WNBA CDN JSON endpoint (no web scraping needed)
+- **Error Handling**: Graceful fallback if schedule unavailable or API fails
+- **Performance**: Efficient JSON parsing and filtering of 331 games to team-specific subset
+- **Data Structure**: Each game contains date, opponent, home_away, time, game_type, arena, game_id
+- **Reliability**: Direct API access more stable than web scraping JavaScript-rendered pages
+
+#### User Experience Impact
+- **Complete Season Overview**: Users can see all upcoming games at a glance
+- **Home/Away Clarity**: Visual indicators make it easy to identify home vs road games
+- **Commissioner's Cup Games**: Special games highlighted with distinct game type label
+- **Quick Access**: Single button click from roster view
+- **Consistent UX**: Same functionality and layout in both desktop and web apps
+
 ### Desktop GUI Complete Modernization (January 24, 2026)
 
 **Major Redesign - Feature Parity with Web App**

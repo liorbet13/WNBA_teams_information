@@ -64,6 +64,7 @@ class ModernRosterGUI:
         self.image_cache = {}
         self.team_logo_cache = {}
         self.sort_by = tk.StringVar(value="Number")
+        self.view_mode = 'team_selection'  # 'team_selection', 'roster', 'schedule', 'player'
         
         # Setup UI
         self.setup_ui()
@@ -288,11 +289,8 @@ class ModernRosterGUI:
         for widget in self.content_frame.winfo_children():
             widget.destroy()
         
-        # Check for expansion teams
-        if roster_data.get('status') == 'expansion_2026':
-            messagebox.showinfo("Expansion Team", roster_data.get('message', ''))
-            self.show_team_selection()
-            return
+        # Set view mode
+        self.view_mode = 'roster'
         
         # Sidebar and main area
         sidebar = tk.Frame(self.content_frame, bg=self.wnba_white, width=250)
@@ -306,7 +304,44 @@ class ModernRosterGUI:
         self.create_sidebar(sidebar)
         
         # Main area content
+        # Check for expansion teams - show message but still display the view
+        if roster_data.get('status') == 'expansion_2026':
+            # Show expansion team message in main area
+            expansion_frame = tk.Frame(main_area, bg=self.wnba_white)
+            expansion_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+            
+            tk.Label(
+                expansion_frame,
+                text=roster_data.get('message', 'Expansion team - roster not yet available'),
+                font=("Arial", 12),
+                bg=self.wnba_white,
+                fg="#856404",
+                wraplength=600
+            ).pack(pady=20)
+            
+            # Still show next game if available
+            try:
+                team_name = roster_data.get('team_name', '')
+                next_game = self.fetcher.fetch_next_game(team_name)
+                if next_game:
+                    next_game_frame = tk.Frame(expansion_frame, bg="#E8F4F8", relief=tk.RAISED, borderwidth=1)
+                    next_game_frame.pack(fill=tk.X, padx=15, pady=15)
+                    
+                    tk.Label(
+                        next_game_frame,
+                        text=f"Next Game: {next_game['home_away']} {next_game['opponent']} - {next_game['date']} at {next_game['time']}",
+                        font=("Arial", 12, "bold"),
+                        bg="#E8F4F8",
+                        fg=self.wnba_blue,
+                        wraplength=600,
+                        justify="left"
+                    ).pack(padx=15, pady=15)
+            except:
+                pass
+            return
+        
         if self.selected_player_id:
+            self.view_mode = 'player'
             self.show_player_details(main_area)
         else:
             self.show_roster_list(main_area)
@@ -328,12 +363,12 @@ class ModernRosterGUI:
         )
         back_btn.pack(fill=tk.X, padx=10, pady=(10, 5))
         
-        # If viewing player details, add back to roster button
-        if self.selected_player_id:
+        # If viewing player details or schedule, add back to roster button
+        if self.selected_player_id or self.view_mode == 'schedule':
             back_roster_btn = tk.Button(
                 sidebar,
                 text="← Back to Roster",
-                command=lambda: self.set_selected_player(None),
+                command=lambda: self.set_selected_player(None) if self.selected_player_id else self.show_roster_view(self.current_roster),
                 bg=self.wnba_blue,
                 fg=self.wnba_white,
                 font=("Arial", 10, "bold"),
@@ -345,6 +380,25 @@ class ModernRosterGUI:
             back_roster_btn.pack(fill=tk.X, padx=10, pady=5)
         
         tk.Frame(sidebar, bg=self.wnba_white, height=20).pack()
+        
+        # View Schedule button (only show when viewing roster, not player details or schedule)
+        if self.view_mode == 'roster' and not self.selected_player_id:
+            schedule_btn = tk.Button(
+                sidebar,
+                text="View Team Schedule",
+                command=self.show_schedule_view,
+                bg=self.wnba_orange,
+                fg=self.wnba_white,
+                font=("Arial", 10, "bold"),
+                cursor="hand2",
+                relief=tk.FLAT,
+                wraplength=200,
+                padx=15,
+                pady=10
+            )
+            schedule_btn.pack(fill=tk.X, padx=10, pady=5)
+            
+            tk.Frame(sidebar, bg=self.wnba_white, height=10).pack()
         
         # Fetch all details button
         fetch_all_btn = tk.Button(
@@ -496,6 +550,26 @@ class ModernRosterGUI:
         """Display team statistics"""
         stats_frame = tk.Frame(parent, bg=self.wnba_white, relief=tk.RAISED, borderwidth=1)
         stats_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Next game info
+        try:
+            team_name = self.current_roster.get('team_name', '')
+            next_game = self.fetcher.fetch_next_game(team_name)
+            if next_game:
+                next_game_frame = tk.Frame(stats_frame, bg="#E8F4F8", relief=tk.RAISED, borderwidth=1)
+                next_game_frame.pack(fill=tk.X, padx=15, pady=(15, 10))
+                
+                tk.Label(
+                    next_game_frame,
+                    text=f"Next Game: {next_game['home_away']} {next_game['opponent']} - {next_game['date']} at {next_game['time']}",
+                    font=("Arial", 10, "bold"),
+                    bg="#E8F4F8",
+                    fg=self.wnba_blue,
+                    wraplength=800,
+                    justify="left"
+                ).pack(padx=10, pady=10)
+        except Exception as e:
+            pass  # Silently skip if next game fetch fails
         
         # Big 3 stats
         big3_frame = tk.Frame(stats_frame, bg=self.wnba_white)
@@ -997,6 +1071,169 @@ class ModernRosterGUI:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+    
+    def show_schedule_view(self):
+        """Display the team schedule"""
+        if not self.current_roster:
+            return
+        
+        # Clear content
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        
+        # Set view mode
+        self.view_mode = 'schedule'
+        
+        # Sidebar and main area
+        sidebar = tk.Frame(self.content_frame, bg=self.wnba_white, width=250)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+        sidebar.pack_propagate(False)
+        
+        main_area = tk.Frame(self.content_frame, bg=self.bg_color)
+        main_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Sidebar content
+        self.create_sidebar(sidebar)
+        
+        # Team header
+        team_name = self.current_roster.get('team_name', '')
+        
+        header_frame = tk.Frame(main_area, bg=self.bg_color)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Team name with logo
+        title_frame = tk.Frame(header_frame, bg=self.bg_color)
+        title_frame.pack()
+        
+        # Load and display team logo
+        logo_path = TEAM_LOGOS.get(team_name)
+        logo_label = tk.Label(title_frame, bg=self.bg_color)
+        logo_label.pack(side=tk.LEFT, padx=(0, 15))
+        
+        if logo_path and os.path.exists(logo_path) and logo_path.endswith('.png'):
+            try:
+                img = Image.open(logo_path)
+                img.thumbnail((80, 80), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                if not hasattr(self, 'schedule_team_logo'):
+                    self.schedule_team_logo = None
+                self.schedule_team_logo = photo
+                logo_label.config(image=photo)
+            except:
+                logo_label.config(text=team_name.split()[0], font=("Arial", 18, "bold"), fg=self.wnba_orange)
+        else:
+            logo_label.config(text=team_name.split()[0], font=("Arial", 18, "bold"), fg=self.wnba_orange)
+        
+        team_title = tk.Label(
+            title_frame,
+            text=f"{team_name} - 2026 Schedule",
+            font=("Arial", 24, "bold"),
+            bg=self.bg_color,
+            fg=self.wnba_black
+        )
+        team_title.pack(side=tk.LEFT)
+        
+        # Fetch schedule
+        games = self.fetcher.fetch_team_schedule(team_name)
+        
+        if games:
+            # Info label
+            info_label = tk.Label(
+                main_area,
+                text=f"{len(games)} games scheduled for the 2026 season",
+                font=("Arial", 12, "bold"),
+                bg=self.bg_color,
+                fg=self.wnba_blue
+            )
+            info_label.pack(pady=10)
+            
+            # Create scrollable frame for games
+            canvas = tk.Canvas(main_area, bg=self.wnba_white, highlightthickness=0)
+            scrollbar = tk.Scrollbar(main_area, orient="vertical", command=canvas.yview)
+            scrollable = tk.Frame(canvas, bg=self.wnba_white)
+            
+            scrollable.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+            
+            canvas.create_window((0, 0), window=scrollable, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            # Display games
+            for idx, game in enumerate(games):
+                bg = "#F5F5F5" if idx % 2 == 0 else self.wnba_white
+                
+                game_frame = tk.Frame(scrollable, bg=bg, pady=10, padx=15)
+                game_frame.pack(fill=tk.X)
+                
+                # Date
+                date_label = tk.Label(
+                    game_frame,
+                    text=game['date'],
+                    font=("Arial", 11, "bold"),
+                    bg=bg,
+                    fg=self.wnba_black,
+                    width=25,
+                    anchor="w"
+                )
+                date_label.pack(side=tk.LEFT, padx=5)
+                
+                # Home/Away indicator and opponent
+                if game['home_away'] == 'vs':
+                    matchup_text = f"Home vs {game['opponent']}"
+                else:
+                    matchup_text = f"Away @ {game['opponent']}"
+                
+                matchup_label = tk.Label(
+                    game_frame,
+                    text=matchup_text,
+                    font=("Arial", 11, "bold"),
+                    bg=bg,
+                    fg=self.wnba_blue,
+                    width=20,
+                    anchor="w"
+                )
+                matchup_label.pack(side=tk.LEFT, padx=10)
+                
+                # Time
+                time_label = tk.Label(
+                    game_frame,
+                    text=game['time'],
+                    font=("Arial", 10, "italic"),
+                    bg=bg,
+                    fg="#666666",
+                    width=12,
+                    anchor="w"
+                )
+                time_label.pack(side=tk.LEFT, padx=5)
+                
+                # Game type
+                type_label = tk.Label(
+                    game_frame,
+                    text=game['game_type'],
+                    font=("Arial", 10, "italic"),
+                    bg=bg,
+                    fg="#999999"
+                )
+                type_label.pack(side=tk.LEFT, padx=5)
+                
+                # Divider
+                if idx < len(games) - 1:
+                    tk.Frame(scrollable, bg="#DDDDDD", height=1).pack(fill=tk.X, padx=15)
+            
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+            
+            canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        else:
+            tk.Label(
+                main_area,
+                text="Schedule not available yet for this team",
+                font=("Arial", 14),
+                bg=self.bg_color,
+                fg="#666666"
+            ).pack(pady=50)
     
     def fetch_all_player_details(self):
         """Fetch details for all players"""

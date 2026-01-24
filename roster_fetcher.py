@@ -848,3 +848,191 @@ class WNBARosterFetcher:
                 saved_teams.append(team_name)
         
         return sorted(saved_teams)
+    
+    def fetch_next_game(self, team_name, season=2026):
+        """
+        Fetch the next upcoming game for a team
+        
+        Args:
+            team_name (str): Name of the team
+            season (int): Season year (default: 2026)
+            
+        Returns:
+            dict: Next game info or None if no upcoming games
+        """
+        from datetime import datetime, timezone
+        
+        # Get all games for the team
+        all_games = self.fetch_team_schedule(team_name, season)
+        
+        if not all_games:
+            return None
+        
+        # Current time in UTC
+        now = datetime.now(timezone.utc)
+        
+        # Find the first game that hasn't happened yet
+        for game in all_games:
+            try:
+                # Parse the game date and time
+                game_datetime_str = f"{game['date']} {game['time']}"
+                # Try to parse the date from our formatted string
+                # This is a simplified approach - we'll need the raw datetime
+                # For now, we'll fetch the schedule again with datetime objects
+                pass
+            except:
+                continue
+        
+        # Actually, let's modify this to work directly with the API response
+        # to get proper datetime comparison
+        try:
+            schedule_url = 'https://cdn.wnba.com/static/json/staticData/scheduleLeagueV2.json'
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            response = requests.get(schedule_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'leagueSchedule' not in data or 'gameDates' not in data['leagueSchedule']:
+                return None
+            
+            upcoming_game = None
+            game_dates = data['leagueSchedule']['gameDates']
+            
+            for game_date in game_dates:
+                for game in game_date.get('games', []):
+                    home_team = game.get('homeTeam', {})
+                    away_team = game.get('awayTeam', {})
+                    
+                    home_full = f"{home_team.get('teamCity', '')} {home_team.get('teamName', '')}".strip()
+                    away_full = f"{away_team.get('teamCity', '')} {away_team.get('teamName', '')}".strip()
+                    
+                    is_home = (team_name in home_full or home_full in team_name)
+                    is_away = (team_name in away_full or away_full in team_name)
+                    
+                    if not is_home and not is_away:
+                        continue
+                    
+                    # Check if game is in the future
+                    game_datetime_str = game.get('gameDateTimeEst', '')
+                    try:
+                        dt = datetime.fromisoformat(game_datetime_str.replace('Z', '+00:00'))
+                        if dt > now:
+                            opponent = away_full if is_home else home_full
+                            formatted_date = dt.strftime('%A %B %d, %Y')
+                            formatted_time = dt.strftime('%I:%M %p ET')
+                            
+                            game_label = game.get('gameLabel', '')
+                            game_sublabel = game.get('gameSubLabel', '')
+                            if 'Commissioner' in game_label or 'Commissioner' in game_sublabel:
+                                game_type = "Commissioner's Cup"
+                            elif 'Playoffs' in game_label or 'Finals' in game_label:
+                                game_type = game_label
+                            else:
+                                game_type = 'Regular Season'
+                            
+                            return {
+                                'date': formatted_date,
+                                'opponent': opponent,
+                                'home_away': 'vs' if is_home else '@',
+                                'time': formatted_time,
+                                'game_type': game_type,
+                                'arena': game.get('arenaName', ''),
+                                'game_id': game.get('gameId', '')
+                            }
+                    except:
+                        continue
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error fetching next game for {team_name}: {e}")
+            return None
+    
+    def fetch_team_schedule(self, team_name, season=2026):
+        """
+        Fetch team schedule from WNBA API
+        
+        Args:
+            team_name (str): Name of the team
+            season (int): Season year (default: 2026)
+            
+        Returns:
+            list: List of game dictionaries with date, opponent, home/away, time
+        """
+        if team_name not in self.TEAMS:
+            return []
+        
+        try:
+            # Fetch schedule from WNBA CDN API
+            schedule_url = 'https://cdn.wnba.com/static/json/staticData/scheduleLeagueV2.json'
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(schedule_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if 'leagueSchedule' not in data or 'gameDates' not in data['leagueSchedule']:
+                return []
+            
+            games = []
+            game_dates = data['leagueSchedule']['gameDates']
+            
+            for game_date in game_dates:
+                for game in game_date.get('games', []):
+                    home_team = game.get('homeTeam', {})
+                    away_team = game.get('awayTeam', {})
+                    
+                    # Build full team name from city and name
+                    home_full = f"{home_team.get('teamCity', '')} {home_team.get('teamName', '')}".strip()
+                    away_full = f"{away_team.get('teamCity', '')} {away_team.get('teamName', '')}".strip()
+                    
+                    # Check if this game involves our team
+                    is_home = (team_name in home_full or home_full in team_name)
+                    is_away = (team_name in away_full or away_full in team_name)
+                    
+                    if not is_home and not is_away:
+                        continue
+                    
+                    # Determine opponent
+                    opponent = away_full if is_home else home_full
+                    
+                    # Format date and time
+                    game_datetime_str = game.get('gameDateTimeEst', '')
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(game_datetime_str.replace('Z', '+00:00'))
+                        formatted_date = dt.strftime('%A %B %d, %Y')
+                        formatted_time = dt.strftime('%I:%M %p ET')
+                    except:
+                        formatted_date = game.get('gameDateEst', '')
+                        formatted_time = ''
+                    
+                    # Determine game type
+                    game_label = game.get('gameLabel', '')
+                    game_sublabel = game.get('gameSubLabel', '')
+                    if 'Commissioner' in game_label or 'Commissioner' in game_sublabel:
+                        game_type = "Commissioner's Cup"
+                    elif 'Playoffs' in game_label or 'Finals' in game_label:
+                        game_type = game_label
+                    else:
+                        game_type = 'Regular Season'
+                    
+                    game_info = {
+                        'date': formatted_date,
+                        'opponent': opponent,
+                        'home_away': 'vs' if is_home else '@',
+                        'time': formatted_time,
+                        'game_type': game_type,
+                        'arena': game.get('arenaName', ''),
+                        'game_id': game.get('gameId', '')
+                    }
+                    
+                    games.append(game_info)
+            
+            return games
+            
+        except Exception as e:
+            print(f"Error fetching schedule for {team_name}: {e}")
+            return []

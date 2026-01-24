@@ -84,6 +84,7 @@ This will automatically open your browser to `http://localhost:8501` with the we
 1. **Select a Team**: Click any team button from the main team selection grid (displayed in 5 columns with team logos)
 2. **View Team Information**: 
    - Team logo and name at the top
+   - **Next Game Display**: See the upcoming game with opponent, date, and time (displayed for all teams including 2026 expansion teams)
    - 2025 season statistics prominently displayed:
      - "Big 3" stats (PPG, RPG, APG) in large orange numbers
      - Additional team stats (W-L, shooting %, defense, rebounds) with tooltips
@@ -92,16 +93,22 @@ This will automatically open your browser to `http://localhost:8501` with the we
 5. **View Player Details**: Click on any player name to see:
    - Player photo and bio (height, weight, college, experience, birth date, draft info)
    - Comprehensive statistics organized by category (30+ stats)
-6. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
-7. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
-8. **Navigate Back**: Use "← Back to Roster" or "← Back to Main Page" buttons to navigate
-9. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
+6. **View Team Schedule**: Click "View Team Schedule" in the sidebar to see all 2026 season games:
+   - Full season schedule with dates, opponents, and game times
+   - Home vs Away indicators
+   - Game type (Regular Season, Commissioner's Cup, Playoffs)
+   - Arena information
+7. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
+8. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
+9. **Navigate Back**: Use "← Back to Roster" or "← Back to Main Page" buttons to navigate
+10. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
 
 #### Desktop Application (Tkinter)
 
 1. **Select a Team**: Click any team button from the visual team selection grid (displayed with team logos)
 2. **View Team Information**: 
    - Team logo and name at the top
+   - **Next Game Display**: See the upcoming game with opponent, date, and time (displayed for all teams including 2026 expansion teams)
    - 2025 season statistics prominently displayed:
      - "Big 3" stats (PPG, RPG, APG) in large orange numbers
      - Additional team stats (W-L, shooting %, defense, rebounds) in organized grid
@@ -110,10 +117,14 @@ This will automatically open your browser to `http://localhost:8501` with the we
 5. **View Player Details**: Click on any player name to see:
    - Player photo and bio (height, weight, college, experience, birth date, draft info)
    - Comprehensive statistics organized by category (30+ stats)
-6. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
-7. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
-8. **Navigate Back**: Use "← Back to Main Page" or "← Back to Roster" buttons to navigate
-9. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
+6. **View Team Schedule**: Click "View Team Schedule" in the sidebar to see all 2026 season games:
+   - Scrollable list with full season schedule
+   - Dates, opponents, home/away indicators, and game times
+   - Game type and arena information
+7. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
+8. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
+9. **Navigate Back**: Use "← Back to Main Page" or "← Back to Roster" buttons to navigate
+10. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
 
 ### Interactive Tooltips (Web App Only)
 
@@ -136,6 +147,8 @@ Roster data is downloaded as JSON files with the naming format: `{team_slug}_ros
 ### Core Functionality
 - **15 WNBA Teams**: Browse rosters for all 13 current teams (including 2025 expansion team Golden State Valkyries) plus 2 upcoming 2026 expansion teams (Portland Fire, Toronto Tempo)
 - **Team Logos**: Professional team logos displayed next to each team name on roster pages
+- **Next Game Display**: View upcoming game for any team with opponent, date, and time (works for all teams including 2026 expansion teams)
+- **Team Schedule Viewing**: Full 2026 season schedule for all teams (~44 games per team) with home/away indicators, game times, and arena information
 - **Team Season Statistics**: View comprehensive 2025 season stats for each team including PPG, RPG, APG, Win-Loss record, shooting percentages, and more
 - **Quick Roster Loading**: Fast initial load with optimized data fetching (~2-3 seconds)
 - **Player Photos**: High-quality headshots for all players

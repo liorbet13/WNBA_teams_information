@@ -411,10 +411,20 @@ with st.sidebar:
         st.markdown("### Current Team")
         st.info(st.session_state.current_roster.get('team_name', 'No team selected'))
         
-        # Back to Roster button (shown when viewing player details)
+        # Back to Roster button (shown when viewing player details or schedule)
         if st.session_state.selected_player_id:
             if st.button("← Back to Roster", use_container_width=True, key="sidebar_back_to_roster"):
                 st.session_state.selected_player_id = None
+                st.rerun()
+        elif st.session_state.get('show_schedule', False):
+            if st.button("← Back to Roster", use_container_width=True, key="sidebar_back_from_schedule"):
+                st.session_state.show_schedule = False
+                st.rerun()
+        
+        # View Schedule button (only show when not viewing schedule)
+        if not st.session_state.get('show_schedule', False):
+            if st.button("View Team Schedule", use_container_width=True, type="primary"):
+                st.session_state.show_schedule = True
                 st.rerun()
         
         # Download button
@@ -462,6 +472,7 @@ with st.sidebar:
         if st.button("← Back to Main Page", use_container_width=True):
             st.session_state.current_roster = None
             st.session_state.selected_player_id = None
+            st.session_state.show_schedule = False
             st.rerun()
 
 # Main content area
@@ -498,8 +509,75 @@ if st.session_state.get('show_stats_guide', False):
 elif st.session_state.current_roster:
     roster_data = st.session_state.current_roster
     
+    # Check if schedule view is requested
+    if st.session_state.get('show_schedule', False):
+        team_name = roster_data['team_name']
+        
+        # Team header with logo
+        logo_col, name_col = st.columns([1, 8], gap="small")
+        
+        with logo_col:
+            logo_path = TEAM_LOGOS.get(team_name)
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    if logo_path.endswith('.svg'):
+                        st.image(logo_path, width=80)
+                    else:
+                        logo_img = Image.open(logo_path)
+                        aspect_ratio = logo_img.width / logo_img.height
+                        new_height = 80
+                        new_width = int(new_height * aspect_ratio)
+                        logo_img = logo_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        st.image(logo_img, width=new_width)
+                except:
+                    pass
+        
+        with name_col:
+            st.header(f"{team_name} - 2026 Schedule")
+        
+        st.markdown("---")
+        
+        # Back button
+        if st.button("← Back to Roster"):
+            st.session_state.show_schedule = False
+            st.rerun()
+        
+        # Fetch schedule
+        with st.spinner("Loading schedule..."):
+            games = st.session_state.fetcher.fetch_team_schedule(team_name)
+        
+        if games:
+            st.info(f"**{len(games)} games scheduled for the 2026 season**")
+            
+            # Display games in a nice table
+            for idx, game in enumerate(games):
+                # Alternate background colors
+                bg_color = "#f0f2f6" if idx % 2 == 0 else "white"
+                
+                col1, col2, col3, col4 = st.columns([2, 2, 1, 3])
+                
+                with col1:
+                    st.markdown(f"**{game['date']}**")
+                
+                with col2:
+                    if game['home_away'] == 'vs':
+                        st.markdown(f"**Home vs {game['opponent']}**")
+                    else:
+                        st.markdown(f"**Away @ {game['opponent']}**")
+                
+                with col3:
+                    st.markdown(f"*{game['time']}*")
+                
+                with col4:
+                    st.markdown(f"_{game['game_type']}_")
+                
+                if idx < len(games) - 1:
+                    st.markdown("<div style='margin: 8px 0; border-bottom: 1px solid #e0e0e0;'></div>", unsafe_allow_html=True)
+        else:
+            st.warning("Schedule not available yet for this team")
+    
     # Check if a player is selected
-    if st.session_state.selected_player_id:
+    elif st.session_state.selected_player_id:
         # Find the selected player
         players = roster_data.get('players', [])
         selected_player = None
@@ -541,6 +619,14 @@ elif st.session_state.current_roster:
         
         with name_col:
             st.header(team_name)
+        
+        # Next game info (show for all teams, including expansion teams)
+        try:
+            next_game = st.session_state.fetcher.fetch_next_game(team_name)
+            if next_game:
+                st.info(f"**Next Game:** {next_game['home_away']} {next_game['opponent']} - {next_game['date']} at {next_game['time']}")
+        except Exception as e:
+            pass  # Silently skip if next game fetch fails
         
         # Status check
         if roster_data['status'] == 'expansion_2026':
