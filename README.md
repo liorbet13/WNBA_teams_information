@@ -19,6 +19,12 @@ Whether you're a casual fan checking your favorite player's performance, a fanta
 
 *Note: All data is sourced directly from the official WNBA website and stats API, ensuring accuracy and up-to-date information.*
 
+---
+
+**Development Note:** This project was built using GitHub Copilot with Claude Sonnet 4.5.
+
+---
+
 ## Requirements
 
 - Python 3.8 or higher
