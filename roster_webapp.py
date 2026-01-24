@@ -16,23 +16,23 @@ import json
 import os
 
 
-# Team logo mapping
+# Team logo mapping (PNG files)
 TEAM_LOGOS = {
-    'Atlanta Dream': 'logos/Atlanta_Dream.svg',
-    'Chicago Sky': 'logos/Chicago_Sky.svg',
-    'Connecticut Sun': 'logos/Conneticut_Sun.svg',
-    'Dallas Wings': 'logos/Dallas_Wings.svg',
-    'Golden State Valkyries': 'logos/GS_Valkyries.svg',
-    'Indiana Fever': 'logos/Indiana_Fever.svg',
-    'Las Vegas Aces': 'logos/LV_Aces.svg',
-    'Los Angeles Sparks': 'logos/LA_Sparks.svg',
-    'Minnesota Lynx': 'logos/Minnesota_Lynx.svg',
-    'New York Liberty': 'logos/NY_Liberty.svg',
-    'Phoenix Mercury': 'logos/Phoenix_Mercury.svg',
-    'Portland Fire': 'logos/Portland_Fireo.svg.png',
-    'Seattle Storm': 'logos/Seattle_Storm.svg',
-    'Toronto Tempo': 'logos/Toronto-Tempo.png',
-    'Washington Mystics': 'logos/Washington_Mystics.svg'
+    'Atlanta Dream': 'logos/Atlanta_Dream.png',
+    'Chicago Sky': 'logos/Chicago_Sky.png',
+    'Connecticut Sun': 'logos/Conneticut_Sun.png',
+    'Dallas Wings': 'logos/Dallas_Wings.png',
+    'Golden State Valkyries': 'logos/GS_Valkyries.png',
+    'Indiana Fever': 'logos/Indiana_Fever.png',
+    'Las Vegas Aces': 'logos/LV_Aces.png',
+    'Los Angeles Sparks': 'logos/LA_Sparks.png',
+    'Minnesota Lynx': 'logos/Minnesota_Lynx.png',
+    'New York Liberty': 'logos/NY_Liberty.png',
+    'Phoenix Mercury': 'logos/Phoenix_Mercury.png',
+    'Portland Fire': 'logos/Portland_Fire_logo.png',
+    'Seattle Storm': 'logos/Seattle_Storm.png',
+    'Toronto Tempo': 'logos/Toronto_Tempo_logo.png',
+    'Washington Mystics': 'logos/Washington_Mystics.png'
 }
 
 
@@ -366,7 +366,7 @@ logo_col, title_col = st.columns([1, 4])
 
 with logo_col:
     try:
-        logo_img = Image.open("logos/WNBA_logo.svg.webp")
+        logo_img = Image.open("logos/WNBA_logo.png")
         # Maintain aspect ratio - resize based on height
         aspect_ratio = logo_img.width / logo_img.height
         new_height = 80

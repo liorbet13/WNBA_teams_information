@@ -99,15 +99,21 @@ This will automatically open your browser to `http://localhost:8501` with the we
 
 #### Desktop Application (Tkinter)
 
-1. **Select a Team**: Choose a team from the dropdown menu
-2. **Fetch Roster**: Click "Fetch Roster from Web" to load the team's current roster
-3. **View Team Stats**: See team logo, season statistics (PPG, RPG, APG), and complete team performance metrics
-4. **View Basic Info**: See player photos, numbers, positions, and key stats
-5. **View Player Details**: Click on any player name to expand and view comprehensive bio (height, weight, college, experience, draft info) and statistics
-6. **Fetch All Details**: Click "Fetch All Player Details" to load comprehensive stats for all players at once
-7. **Download Roster**: Click "Download Roster Data" to export the data to a JSON file
-8. **Stats Guide**: Click "Stats Guide" to view a comprehensive basketball statistics dictionary
-9. **Show All Stats**: For any player, click "Show All Stats" to see all 30+ statistical categories organized by type
+1. **Select a Team**: Click any team button from the visual team selection grid (displayed with team logos)
+2. **View Team Information**: 
+   - Team logo and name at the top
+   - 2025 season statistics prominently displayed:
+     - "Big 3" stats (PPG, RPG, APG) in large orange numbers
+     - Additional team stats (W-L, shooting %, defense, rebounds) in organized grid
+3. **Browse Roster**: View all players with their numbers, positions, and key stats (PPG, RPG, APG)
+4. **Sort Players**: Use the dropdown to sort by Number, Name, Position, PPG, RPG, or APG
+5. **View Player Details**: Click on any player name to see:
+   - Player photo and bio (height, weight, college, experience, birth date, draft info)
+   - Comprehensive statistics organized by category (30+ stats)
+6. **Fetch All Details**: Click "Fetch All Player Details" in the sidebar to load stats for all players at once
+7. **Download Roster**: Click "Download Roster (JSON)" in the sidebar to export team data
+8. **Navigate Back**: Use "← Back to Main Page" or "← Back to Roster" buttons to navigate
+9. **Stats Guide**: Click "Basketball Stats Guide" in the sidebar for definitions of all statistics
 
 ### Interactive Tooltips (Web App Only)
 
@@ -144,14 +150,24 @@ Roster data is downloaded as JSON files with the naming format: `{team_slug}_ros
 - **Advanced Metrics**: +/-, Double-Doubles, Triple-Doubles, Fantasy Points
 
 ### User Experience Features
-- **Team Statistics Display**: Each team page prominently shows the "Big 3" stats (PPG, RPG, APG) in large orange numbers, followed by additional team stats (W-L record, shooting percentages, steals, blocks, turnovers, etc.) with interactive tooltips
-- **Team Logos**: Professional SVG/PNG team logos displayed alongside team names for visual identification
+- **Visual Team Selection**: Both GUI and webapp feature an intuitive logo grid for team selection (5-column layout)
+- **Team Statistics Display**: Each team page prominently shows the "Big 3" stats (PPG, RPG, APG) in large orange numbers, followed by additional team stats (W-L record, shooting percentages, steals, blocks, turnovers, etc.)
+- **Team Logos**: Professional PNG team logos displayed throughout the application for visual identification
+- **Modern Navigation**: Clean sidebar navigation with back buttons for easy movement between views
+- **Sorting Options**: Sort roster by Number, Name, Position, PPG, RPG, or APG in both applications
 - **Interactive Tooltips (Web App)**: Hover over any stat to see its definition instantly - no need to switch to the guide
 - **Basketball Stats Guide**: Built-in dictionary explaining all basketball statistics with definitions and descriptions
 - **On-Demand Details**: Player bio and advanced stats fetched only when needed for optimal performance
 - **Bulk Fetch**: "Fetch All Details" button to load all player information at once
 - **Download Rosters**: Export team rosters to JSON files for offline analysis
-- **Show All Stats**: Deep dive view displaying all 30+ comprehensive stat categories organized by category
+
+### Desktop Application (Tkinter) Features
+- Modern, clean interface matching the webapp design
+- Visual team selection grid with logos
+- Team statistics prominently displayed
+- Sidebar navigation with action buttons
+- WNBA logo in header
+- Smooth player detail transitions
 
 ### Web Application (Streamlit) Exclusive Features
 - Modern, responsive design with WNBA branding
@@ -172,18 +188,18 @@ The following enhancements are planned for future releases:
 
 ```
 WNBA_teams_information/
-├── roster_gui.py          # Desktop GUI application (Tkinter)
+├── roster_gui.py          # Desktop GUI application (Tkinter) - Modern interface
 ├── roster_webapp.py       # Web application (Streamlit)
 ├── roster_fetcher.py      # Business logic for fetching roster data
 ├── stats_guide.py         # Basketball statistics definitions and guide
 ├── test_roster.py         # Unit tests
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
-├── logos/                # Team and WNBA logos (SVG/PNG)
-│   ├── WNBA_logo.svg.webp
-│   ├── Atlanta_Dream.svg
-│   ├── Chicago_Sky.svg
-│   └── ... (15 team logos)
+├── logos/                # Team and WNBA logos (PNG format)
+│   ├── WNBA_logo.png
+│   ├── Atlanta_Dream.png
+│   ├── Chicago_Sky.png
+│   └── ... (15 team logos in PNG format)
 └── .gitignore            # Git ignore rules
 ```
 
@@ -202,7 +218,7 @@ WNBA_teams_information/
   - Height, weight, college, experience, birth date, draft information
   - Scrapes multiple `<dl>` tags for bio data (updated structure as of 2025)
 - **Player Photos**: WNBA CDN at `https://cdn.wnba.com/headshots/`
-- **Team Logos**: Local `logos/` directory with SVG and PNG files for all 15 teams
+- **Team Logos**: Local `logos/` directory with PNG files for all 15 teams
 
 ### API Integration
 
@@ -284,8 +300,9 @@ python test_roster.py
 ### Code Structure
 
 - `WNBARosterFetcher` class: Handles all data fetching and parsing logic
-- `WNBARosterGUI` class: Manages the Tkinter GUI and user interactions
+- `ModernRosterGUI` class: Manages the modern Tkinter GUI with visual team selection and navigation
 - Modular design separates business logic from presentation
+- Unified interface design between GUI and webapp for consistent user experience
 
 ## Troubleshooting
 
@@ -312,12 +329,15 @@ python test_roster.py
 For detailed information about recent updates, bug fixes, and implementation details, see [CHANGELOG.md](CHANGELOG.md).
 
 **Recent highlights:**
-- Visual team selection with logo grid (January 2026)
-- Team season statistics integration
+- **Modern GUI redesign** - Desktop app now matches webapp interface (January 2026)
+- Visual team selection with logo grid for both GUI and webapp
+- Team season statistics integration with prominent display
+- Sorting options for roster view in both applications
+- Enhanced navigation with back buttons and sidebar layout
+- PNG logo support throughout both applications
 - Enhanced player statistics with 37+ fields
-- Improved navigation and UI polish
 - Official WNBA Stats API integration for comprehensive player data
-- Basketball Stats Guide with interactive tooltips
+- Basketball Stats Guide with interactive tooltips (webapp)
 
 ## License
 

@@ -147,7 +147,5 @@ $RECYCLE.BIN/
 team_rosters/
 *.json
 
-# Image cache
-*.png
-*.jpg
-*.jpeg
+# Note: PNG logos in logos/ folder are tracked
+# If you need to ignore cached images elsewhere, be more specific
